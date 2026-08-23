@@ -24,6 +24,7 @@ ENV_FILE = CONFIG_DIR / "env"
 load_dotenv(ENV_FILE)
 
 TIMEZONE = ZoneInfo("America/New_York")
+OWNER_NAME = os.getenv("OWNER_NAME", "Khushi")
 MODEL = "claude-sonnet-5"
 
 # Commute + office. Invisible to this app, so blocked by rule.

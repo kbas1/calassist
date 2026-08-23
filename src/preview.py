@@ -14,6 +14,13 @@ from src.tools import Proposal
 HOURS = list(range(7, 23))
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
+
+def hour_label(h: int) -> str:
+    """24-hour int -> '7 AM' / '12 PM' / '5 PM'."""
+    suffix = "AM" if h < 12 else "PM"
+    twelve = h % 12 or 12
+    return f"{twelve} {suffix}"
+
 # Approximations of Google Calendar's palette, so the preview matches the result.
 CATEGORY_CSS = {
     "focus": "#4a63d4", "social": "#e0736b", "workout": "#3f9a5c",
@@ -29,7 +36,7 @@ CSS = """
 * { box-sizing:border-box; }
 body { background:var(--bg); color:var(--fg); margin:0; padding:2rem 1.5rem;
        font:15px/1.55 ui-sans-serif,system-ui,-apple-system,sans-serif; }
-.wrap { max-width:980px; margin:0 auto; }
+.wrap { max-width:1180px; margin:0 auto; }
 h1 { font-size:1.5rem; margin:0 0 .2rem; letter-spacing:-.01em; }
 .sub { color:var(--muted); margin:0 0 1.25rem; font-size:.92rem; }
 .key { display:flex; gap:1.1rem; flex-wrap:wrap; align-items:center;
@@ -38,15 +45,15 @@ h1 { font-size:1.5rem; margin:0 0 .2rem; letter-spacing:-.01em; }
       margin-right:5px; vertical-align:-2px; border:1px solid rgba(0,0,0,.12); }
 .scroll { overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
 table { border-collapse:collapse; width:100%; min-width:660px; }
-th,td { border:1px solid var(--line); padding:0; height:24px; text-align:center;
-        font-size:11px; overflow:hidden; }
+th,td { border:1px solid var(--line); padding:0; height:38px; text-align:center;
+        font-size:12.5px; overflow:hidden; line-height:1.25; }
 th { padding:7px 4px; font-weight:600; font-size:.8rem; }
 th .d { color:var(--muted); font-weight:400; font-size:.72rem; }
-td.h { width:52px; color:var(--muted); font-size:10px; padding-right:6px;
+td.h { width:64px; white-space:nowrap; color:var(--muted); font-size:10px; padding-right:6px;
        text-align:right; border-left:none; }
 td.work { background:var(--work); }
 td.ex { background:var(--existing); }
-td.blk { color:#fff; font-weight:600; }
+td.blk { color:#fff; font-weight:600; padding:0 3px; }
 section { margin-top:1.6rem; }
 h2 { font-size:.74rem; text-transform:uppercase; letter-spacing:.08em;
      color:var(--muted); margin:0 0 .5rem; font-weight:600; }
@@ -87,15 +94,25 @@ def render(proposal: Proposal, existing: list[Event],
     cells = _grid(proposal, existing, monday)
     blocked_start, blocked_end = config.WEEKDAY_BLOCKED
 
+    # Zoom: render only the hours that carry something, padded by one either
+    # side, rather than a fixed 7 AM-10 PM wall that is mostly empty.
+    used_hours = [h for (_, h) in cells]
+    if used_hours:
+        lo = max(min(HOURS), min(used_hours) - 1)
+        hi = min(max(HOURS), max(used_hours) + 1)
+    else:
+        lo, hi = min(HOURS), max(HOURS)
+    hours = list(range(lo, hi + 1))
+
     rows = []
-    for h in HOURS:
-        tds = [f'<td class="h">{h:02d}</td>']
+    for h in hours:
+        tds = [f'<td class="h">{hour_label(h)}</td>']
         for d in range(7):
             hit = cells.get((d, h))
             if hit:
                 cls, style, label = hit
                 st = f' style="{style}"' if style else ""
-                tds.append(f'<td class="{cls}"{st} title="{label}">{label[:13]}</td>')
+                tds.append(f'<td class="{cls}"{st} title="{label}">{label[:20]}</td>')
             elif d < 5 and blocked_start.hour <= h < blocked_end.hour:
                 tds.append('<td class="work" title="Work — not visible to CalAssist"></td>')
             else:
@@ -109,25 +126,29 @@ def render(proposal: Proposal, existing: list[Event],
 
     used = sorted({b.get("category", "focus") for b in proposal.blocks})
     key = "".join(
-        f'<span><i class="sw" style="background:{CATEGORY_CSS.get(c, "#888")}"></i>{c}</span>'
+        f'<span><i class="sw" style="background:{CATEGORY_CSS.get(c, "#888")}"></i>'
+        f'{c.title()}</span>'
         for c in used
     )
     key += ('<span><i class="sw" style="background:var(--existing)"></i>'
-            'already on your calendar</span>'
+            'Already On Your Calendar</span>'
             '<span><i class="sw" style="background:var(--work)"></i>'
-            'work — not visible to CalAssist</span>')
+            'Work — Not Visible To CalAssist</span>')
 
     def section(title, items):
         return f"<section><h2>{title}</h2><ul>{''.join(items)}</ul></section>" if items else ""
 
-    skipped = section("Already on your calendar — skipped", [
+    skipped = section("Already On Your Calendar — Skipped", [
         f"<li><strong>{s['item']}</strong> <span class='why'>&rarr; matched "
         f"&ldquo;{s['matched']}&rdquo;</span></li>"
         for s in proposal.skipped_already_scheduled])
-    missed = section("Did not fit", [
+    missed = section("Did Not Fit", [
         f"<li><strong>{n['item']}</strong> <span class='why'>&mdash; {n['why']}</span></li>"
         for n in proposal.not_scheduled])
-    warns = section("Watch out", [f"<li>{w}</li>" for w in proposal.warnings])
+    warns = section("Notes", [f"<li>{w}</li>" for w in proposal.warnings])
+
+    title = f"{config.OWNER_NAME}'s Week Of {monday:%b}-{monday.day}-{monday.year}"
+    tzname = datetime.now(config.TIMEZONE).strftime("%Z")
 
     mins = sum(
         (int(b["end"][:2]) * 60 + int(b["end"][3:]))
@@ -138,10 +159,11 @@ def render(proposal: Proposal, existing: list[Event],
     html = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Week of {monday:%b %-d}</title><style>{CSS}</style></head>
+<title>{title}</title><style>{CSS}</style></head>
 <body><div class="wrap">
-<h1>Week of {monday:%B %-d}</h1>
-<p class="sub">{len(proposal.blocks)} proposed blocks &middot; {mins // 60}h {mins % 60}m</p>
+<h1>{title}</h1>
+<p class="sub">{len(proposal.blocks)} Proposed Blocks &middot; {mins // 60}h {mins % 60}m
+   &middot; All Times {tzname}</p>
 <div class="key">{key}</div>
 <div class="scroll"><table>
 <tr><th></th>{headers}</tr>
