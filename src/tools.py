@@ -14,7 +14,8 @@ from anthropic import beta_tool
 import config
 from src.availability import find_free_slots
 from src.calendar_read import fetch_all_events, is_busy
-from src.priorities_read import extract_week_section, fetch_priorities, week_label
+from src.priorities_read import (extract_defaults, extract_week_section,
+                                 fetch_priorities, week_label)
 
 TIME_RE = re.compile(r"^\d{2}:\d{2}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -77,9 +78,10 @@ def get_priorities() -> str:
     """
     text = fetch_priorities()
     label = week_label()
+    defaults = extract_defaults(text)
     section = extract_week_section(text, label)
     if section:
-        return section
+        return f"{defaults}\n\n{section}" if defaults else section
     return (
         f"No '## Week of {label}' section exists yet. Ask the user what they want "
         f"to accomplish this week. Full file follows for context:\n\n{text}"

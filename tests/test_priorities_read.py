@@ -66,3 +66,35 @@ def test_midweek_plans_the_current_week():
 def test_monday_plans_that_same_week():
     monday = date(2026, 8, 24)
     assert target_monday(monday) == date(2026, 8, 24)
+
+
+# --- persistent defaults ---------------------------------------------
+
+from src.priorities_read import extract_defaults
+
+WITH_DEFAULTS = """# Priorities
+
+## Defaults
+### Typical durations
+- Gym session - 45m
+
+## Week of 8.24
+### Priorities
+1. Prep - 4h
+"""
+
+
+def test_extracts_the_defaults_section():
+    d = extract_defaults(WITH_DEFAULTS)
+    assert "Gym session - 45m" in d
+    assert "Prep - 4h" not in d          # must not bleed into the week
+
+
+def test_defaults_absent_returns_none():
+    assert extract_defaults("## Week of 8.24\n1. Thing") is None
+
+
+def test_week_extraction_still_excludes_defaults():
+    w = extract_week_section(WITH_DEFAULTS, "8.24")
+    assert "Prep - 4h" in w
+    assert "Gym session" not in w

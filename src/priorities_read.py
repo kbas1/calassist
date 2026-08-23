@@ -41,6 +41,29 @@ def week_label(day: date | None = None) -> str:
     return f"{monday.month}.{monday.day}"
 
 
+def extract_defaults(text: str) -> str | None:
+    """Return the '## Defaults' section, if the file has one.
+
+    Standing answers — how long a gym session is, where you leave from for a
+    given event — belong here rather than being re-typed every week.
+    """
+    lines = text.splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if re.match(r"^##\s*Defaults\s*$", line.strip(), re.IGNORECASE):
+            start = i
+            break
+    if start is None:
+        return None
+
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        if lines[i].strip().startswith("## "):
+            end = i
+            break
+    return "\n".join(lines[start:end]).strip()
+
+
 def extract_week_section(text: str, label: str) -> str | None:
     """Return just the '## Week of <label>' section.
 

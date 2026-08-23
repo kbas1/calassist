@@ -214,8 +214,14 @@ def run_conversation(
             continue
 
         # The agent stopped without proposing, so it asked something.
+        # An empty line here must NOT quit: at the proposal stage Enter means
+        # "accept", and silently mapping the same key to "throw the whole
+        # conversation away" loses everything the user has typed so far.
         reply = ask()
-        if not reply or reply.lower() in {"quit", "exit", "q"}:
+        while not reply:
+            show("(Type an answer, or 'quit' to stop.)")
+            reply = ask()
+        if reply.lower() in {"quit", "exit", "q"}:
             return None
         messages.append({"role": "user", "content": reply})
 
