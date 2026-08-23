@@ -5,6 +5,7 @@
 """
 import argparse
 import sys
+import webbrowser
 from datetime import date, datetime, timedelta
 
 import config
@@ -33,7 +34,7 @@ def _summarise(proposal: Proposal, path: str) -> None:
         print(f"  DID NOT FIT: {n['item']} — {n['why']}")
     for w in proposal.warnings:
         print(f"  warning: {w}")
-    print(f"\n  Visual preview:  file://{path}")
+    print(f"\n  Visual preview (opening in your browser):\n    file://{path}")
     print("=" * 64)
 
 
@@ -43,6 +44,8 @@ def main() -> int:
     parser.add_argument("--write", action="store_true",
                         help="offer to create the events (default is preview only)")
     parser.add_argument("--week", help="Monday of the target week, YYYY-MM-DD")
+    parser.add_argument("--no-open", action="store_true",
+                        help="do not open the visual preview in a browser")
     args = parser.parse_args()
 
     monday = _monday(args.week)
@@ -56,7 +59,10 @@ def main() -> int:
     def on_proposal(proposal: Proposal) -> str | None:
         """Show the week, then accept it or send feedback back to the agent."""
         existing = fetch_all_events(start, start + timedelta(days=7))
-        _summarise(proposal, render(proposal, existing))
+        path = render(proposal, existing)
+        _summarise(proposal, path)
+        if not args.no_open:
+            webbrowser.open(f"file://{path}")
         print("\nHappy with this? Press Enter to accept.")
         print("Or tell me what to change (e.g. 'move the roadmap block to Sunday').\n")
         return input("You: ").strip() or None
