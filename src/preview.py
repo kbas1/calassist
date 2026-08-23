@@ -45,19 +45,19 @@ h1 { font-size:1.5rem; margin:0 0 .2rem; letter-spacing:-.01em; }
       margin-right:9px; vertical-align:-4px; border:1px solid rgba(0,0,0,.12); }
 .scroll { overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
 table { border-collapse:collapse; width:100%; min-width:660px; }
-th,td { border-left:1px solid var(--line); border-right:1px solid var(--line);
-        border-top:none; border-bottom:none; padding:0; height:15px;
-        text-align:center; font-size:11.5px; overflow:hidden; line-height:1.1; }
-td.hr, th { border-top:1px solid var(--line); }
-td.cont { border-top:none; }
-tr:last-child td { border-bottom:1px solid var(--line); }
+th,td { border:1px solid var(--line); padding:0; height:46px; text-align:center;
+        font-size:12px; line-height:1.15; position:relative; }
+.seg { position:absolute; left:1px; right:1px; border-radius:3px; overflow:hidden;
+       display:flex; align-items:center; justify-content:center; padding:0 2px;
+       color:#fff; font-weight:600; font-size:11.5px; }
+.seg.ex { background:var(--existing); color:var(--fg); font-weight:500; }
 th { padding:7px 4px; font-weight:600; font-size:.8rem; }
 th .d { color:var(--muted); font-weight:400; font-size:.72rem; }
 td.h { width:64px; white-space:nowrap; border-left:none; border-right:none; color:var(--muted); font-size:10px; padding-right:6px;
        text-align:right; border-left:none; }
 td.work { background:var(--work); }
-td.ex { background:var(--existing); }
-td.blk { color:#fff; font-weight:600; padding:0 3px; }
+
+
 section { margin-top:1.6rem; }
 h2 { font-size:.74rem; text-transform:uppercase; letter-spacing:.08em;
      color:var(--muted); margin:0 0 .5rem; font-weight:600; }
@@ -67,45 +67,47 @@ li { margin-bottom:.35rem; }
 """
 
 
-SLOT_MINUTES = 15
-SLOTS_PER_HOUR = 60 // SLOT_MINUTES
-
-
-def _slot(hhmm: str) -> int:
-    """'17:45' -> absolute quarter-hour index within the day."""
-    h, m = int(hhmm[:2]), int(hhmm[3:5])
-    return h * SLOTS_PER_HOUR + m // SLOT_MINUTES
+def _minutes(hhmm: str) -> int:
+    return int(hhmm[:2]) * 60 + int(hhmm[3:5])
 
 
 def _grid(proposal: Proposal, existing: list[Event], monday):
-    """Map (day_index, slot) -> (css_class, inline_style, label, is_first_slot).
+    """Map (day_index, hour) -> list of segments inside that hour.
 
-    Resolution is 15 minutes, not one hour. At hour resolution a 30-minute
-    block and a 90-minute block paint identically, which makes the chart
-    misrepresent the shape of the week.
+    One row per hour, but each block is painted as a proportional slice of the
+    cell it sits in. A 3:30-4:00 block fills the bottom half of the 3 PM cell
+    rather than the whole thing — at hour granularity a 30-minute block and a
+    2-hour block looked identical.
     """
-    cells = {}
+    cells: dict = {}
 
-    def paint(idx, start_slot, end_slot, cls, style, label):
-        for n, slot in enumerate(range(start_slot, max(start_slot + 1, end_slot))):
-            cells[(idx, slot)] = (cls, style, label, n == 0)
+    def paint(idx, start_min, end_min, cls, style, label):
+        first = True
+        for h in range(start_min // 60, ((end_min - 1) // 60) + 1):
+            hour_start, hour_end = h * 60, h * 60 + 60
+            top = max(start_min, hour_start) - hour_start
+            bottom = min(end_min, hour_end) - hour_start
+            if bottom <= top:
+                continue
+            cells.setdefault((idx, h), []).append(
+                (top / 60 * 100, (bottom - top) / 60 * 100, cls, style,
+                 label if first else "", label)
+            )
+            first = False
 
     for e in existing:
         idx = (e.start.date() - monday).days
-        if not 0 <= idx <= 6:
-            continue
-        paint(idx,
-              _slot(f"{e.start:%H:%M}"), _slot(f"{e.end:%H:%M}"),
-              "ex", "", e.summary)
+        if 0 <= idx <= 6:
+            paint(idx, _minutes(f"{e.start:%H:%M}"), _minutes(f"{e.end:%H:%M}"),
+                  "ex", "", e.summary)
 
     for b in proposal.blocks:
         idx = (datetime.fromisoformat(b["day"]).date() - monday).days
-        if not 0 <= idx <= 6:
-            continue
-        cat = b.get("category", "focus")
-        colour = CATEGORY_CSS.get(cat, CATEGORY_CSS["focus"])
-        paint(idx, _slot(b["start"]), _slot(b["end"]),
-              f"blk cat-{cat}", f"background:{colour}", b["title"])
+        if 0 <= idx <= 6:
+            cat = b.get("category", "focus")
+            colour = CATEGORY_CSS.get(cat, CATEGORY_CSS["focus"])
+            paint(idx, _minutes(b["start"]), _minutes(b["end"]),
+                  f"blk cat-{cat}", f"background:{colour}", b["title"])
 
     return cells
 
@@ -122,35 +124,30 @@ def render(proposal: Proposal, existing: list[Event],
 
     # Zoom: render only the hours that carry something, padded by one either
     # side, rather than a fixed 7 AM-10 PM wall that is mostly empty.
-    used = [sl for (_, sl) in cells]
-    if used:
-        lo = max(min(HOURS) * SLOTS_PER_HOUR, min(used) - SLOTS_PER_HOUR)
-        hi = min(max(HOURS) * SLOTS_PER_HOUR + SLOTS_PER_HOUR - 1,
-                 max(used) + SLOTS_PER_HOUR)
+    used_hours = [h for (_, h) in cells]
+    if used_hours:
+        lo = max(min(HOURS), min(used_hours) - 1)
+        hi = min(max(HOURS), max(used_hours) + 1)
     else:
-        lo = min(HOURS) * SLOTS_PER_HOUR
-        hi = max(HOURS) * SLOTS_PER_HOUR
-    lo -= lo % SLOTS_PER_HOUR                      # start on a whole hour
-    slots = list(range(lo, hi + 1))
+        lo, hi = min(HOURS), max(HOURS)
+    hours = list(range(lo, hi + 1))
 
     rows = []
-    for sl in slots:
-        h, on_hour = sl // SLOTS_PER_HOUR, sl % SLOTS_PER_HOUR == 0
-        label_cell = (f'<td class="h hr">{hour_label(h)}</td>' if on_hour
-                      else '<td class="h"></td>')
-        tds = [label_cell]
+    for h in hours:
+        tds = [f'<td class="h">{hour_label(h)}</td>']
         for d in range(7):
-            hit = cells.get((d, sl))
-            if hit:
-                cls, style, label, first = hit
-                st = f' style="{style}"' if style else ""
-                text = label[:20] if first else ""
-                edge = "" if first else " cont"
-                tds.append(f'<td class="{cls}{edge}"{st} title="{label}">{text}</td>')
-            elif d < 5 and blocked_start.hour <= h < blocked_end.hour:
-                tds.append('<td class="work" title="Work — not visible to CalAssist"></td>')
+            segs = cells.get((d, h))
+            work = d < 5 and blocked_start.hour <= h < blocked_end.hour
+            base = ' class="work" title="Work — not visible to CalAssist"' if work else ""
+            if segs:
+                inner = "".join(
+                    f'<div class="seg {cls}" style="top:{top:.4f}%;'
+                    f'height:{ht:.4f}%;{style}" title="{full}">{text[:18]}</div>'
+                    for top, ht, cls, style, text, full in segs
+                )
+                tds.append(f"<td{base}>{inner}</td>")
             else:
-                tds.append(f'<td class="{"hr" if on_hour else ""}"></td>')
+                tds.append(f"<td{base}></td>")
         rows.append(f"<tr>{''.join(tds)}</tr>")
 
     headers = "".join(

@@ -93,27 +93,35 @@ def test_skipped_section_is_not_rendered(tmp_path):
     assert "Dentist" not in html
 
 
-def test_block_height_reflects_real_duration(tmp_path):
-    """A 30-min block must not paint the same area as a 2-hour one.
-
-    At hour resolution both filled exactly one cell, which made the chart
-    misrepresent the shape of the week.
-    """
-    short = Proposal(blocks=[{"title": "Short", "day": "2026-08-27", "start": "17:00",
-                              "end": "17:30", "reason": "x", "category": "errand"}])
-    long_ = Proposal(blocks=[{"title": "Long", "day": "2026-08-27", "start": "17:00",
-                              "end": "19:00", "reason": "x", "category": "errand"}])
-    n_short = open(render(short, [], str(tmp_path / "s.html"))).read().count("cat-errand")
-    n_long = open(render(long_, [], str(tmp_path / "l.html"))).read().count("cat-errand")
-    assert n_long == n_short * 4, f"2h should be 4x a 30m block, got {n_long} vs {n_short}"
+def _segments(html: str, category: str) -> list[tuple[float, float]]:
+    """Every (top%, height%) painted for a category."""
+    return [(float(t), float(h)) for t, h in re.findall(
+        r'top:([\d.]+)%;height:([\d.]+)%;[^"]*"[^>]*>(?:[^<]*)</div>', html)
+        if f"cat-{category}" in html]
 
 
-def test_quarter_hour_starts_are_honoured(tmp_path):
-    """17:45-18:30 must start three quarters into the 5 PM hour."""
+def test_half_hour_block_paints_half_the_cell(tmp_path):
+    """3:30-4:00 fills the BOTTOM HALF of the 3 PM cell, not all of it."""
+    p = Proposal(blocks=[{"title": "Groceries", "day": "2026-08-27", "start": "15:30",
+                          "end": "16:00", "reason": "x", "category": "errand"}])
+    html = open(render(p, [], str(tmp_path / "h.html"))).read()
+    assert "top:50.0000%;height:50.0000%" in html
+
+
+def test_full_hour_block_fills_the_cell(tmp_path):
+    p = Proposal(blocks=[{"title": "Prep", "day": "2026-08-27", "start": "16:00",
+                          "end": "17:00", "reason": "x", "category": "focus"}])
+    html = open(render(p, [], str(tmp_path / "f.html"))).read()
+    assert "top:0.0000%;height:100.0000%" in html
+
+
+def test_block_spanning_hours_splits_proportionally(tmp_path):
+    """17:45-18:30 = last quarter of 5 PM, then first half of 6 PM."""
     p = Proposal(blocks=[{"title": "Odd", "day": "2026-08-27", "start": "17:45",
                           "end": "18:30", "reason": "x", "category": "focus"}])
     html = open(render(p, [], str(tmp_path / "q.html"))).read()
-    assert html.count("cat-focus") == 3          # 45 min = 3 quarter-hour slots
+    assert "top:75.0000%;height:25.0000%" in html    # 5 PM cell
+    assert "top:0.0000%;height:50.0000%" in html     # 6 PM cell
 
 
 def test_title_uses_lowercase_of(tmp_path):
