@@ -13,7 +13,7 @@ from anthropic import beta_tool
 
 import config
 from src.availability import find_free_slots
-from src.calendar_read import fetch_events, is_busy
+from src.calendar_read import fetch_all_events, is_busy
 from src.priorities_read import extract_week_section, fetch_priorities, week_label
 
 TIME_RE = re.compile(r"^\d{2}:\d{2}$")
@@ -96,7 +96,7 @@ def get_calendar_events(start_date: str, end_date: str) -> str:
     """
     start = datetime.fromisoformat(start_date).replace(tzinfo=config.TIMEZONE)
     end = datetime.fromisoformat(end_date).replace(tzinfo=config.TIMEZONE) + timedelta(days=1)
-    events = fetch_events(start, end)
+    events = fetch_all_events(start, end)
 
     if not events:
         return "No events in that range."
@@ -140,7 +140,7 @@ def find_free_slots_tool(start_date: str, end_date: str, minimum_minutes: int,
     """
     start = datetime.fromisoformat(start_date).replace(tzinfo=config.TIMEZONE)
     end = datetime.fromisoformat(end_date).replace(tzinfo=config.TIMEZONE) + timedelta(days=1)
-    events = fetch_events(start, end)
+    events = fetch_all_events(start, end)
 
     slots = find_free_slots(
         events, start.date(), end.date() - timedelta(days=1),

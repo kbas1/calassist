@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 
 import config
 from src.agent import opening_message, run_conversation
-from src.calendar_read import fetch_events
+from src.calendar_read import fetch_all_events
 from src.preview import render
 from src.priorities_read import target_monday
 from src.tools import Proposal
@@ -54,7 +54,7 @@ def main() -> int:
 
     def on_proposal(proposal: Proposal) -> str | None:
         """Show the week, then accept it or send feedback back to the agent."""
-        existing = fetch_events(start, start + timedelta(days=7))
+        existing = fetch_all_events(start, start + timedelta(days=7))
         _summarise(proposal, render(proposal, existing))
         print("\nHappy with this? Press Enter to accept.")
         print("Or tell me what to change (e.g. 'move the roadmap block to Sunday').\n")

@@ -55,6 +55,23 @@ def _parse_when(raw_side: dict) -> tuple[datetime, bool]:
     return datetime.fromisoformat(raw_side["dateTime"]), False
 
 
+def fetch_all_events(start: datetime, end: datetime) -> list[Event]:
+    """Every event that occupies this time, across all calendars we care about.
+
+    CalAssist writes to TARGET_CALENDAR_ID but the user lives on `primary`.
+    Reading only `primary` would make CalAssist blind to blocks it wrote on a
+    previous run, and it would cheerfully schedule on top of them.
+    """
+    ids = ["primary"]
+    if config.TARGET_CALENDAR_ID not in ids:
+        ids.append(config.TARGET_CALENDAR_ID)
+
+    events: list[Event] = []
+    for cid in ids:
+        events.extend(fetch_events(start, end, calendar_id=cid))
+    return sorted(events, key=lambda e: e.start)
+
+
 def fetch_events(start: datetime, end: datetime, calendar_id: str = "primary") -> list[Event]:
     """Fetch events between two timezone-aware datetimes, expanding recurrences."""
     service = build("calendar", "v3", credentials=get_credentials())
