@@ -71,10 +71,19 @@ The timing rules matter — get these exactly right:
 not want to arrive early. An 18:00 event 30 minutes away is a travel block of
 17:30-18:00 — never 17:15-17:45.
 
-**Travel AFTER an event exists ONLY if another event follows it that day.**
-When one does, the block STARTS exactly when the first event ENDS, and is
-sized so they arrive on time at the next one. If the next event is somewhere
-else entirely, size it for that trip, not for going home.
+**Travel AFTER an event exists ONLY if something follows it that day.**
+"Something" includes blocks YOU are proposing, not just events already on the
+calendar. A block you place at home right after an event across town needs the
+trip home in between, or you have scheduled the impossible.
+
+When something does follow, the travel block STARTS exactly when the event
+ENDS, and is sized so they arrive on time at whatever is next — wherever that
+is. If the next thing is a focus block at home, size it for the trip home.
+
+Concretely: an event ending 19:00 in the Financial District, followed by work
+at home, cannot be followed by a block starting at 19:15. Either place travel
+19:00-19:30 and start the work at 19:30, or start the work later. The
+15-minute buffer is NOT a substitute for a real commute.
 
 **If nothing follows that day, do NOT create a travel-home block at all.**
 Their trip home is not a commitment and does not belong on the calendar. An
