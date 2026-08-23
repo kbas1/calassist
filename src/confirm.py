@@ -16,6 +16,12 @@ AFFIRMATIVES = {
     "i'm happy", "happy", "happy with this", "yes happy with this",
     "add to calendar", "add it", "write it", "save it", "book it", "schedule it",
     "yes do it", "yes please do it", "finalize", "finalise", "push it",
+    "love it", "i love it", "love this", "amazing", "awesome", "excellent",
+    "beautiful", "exactly", "spot on", "thats it", "that's it", "thats great",
+    "yes thank you", "thanks", "thank you", "correct", "right", "looks perfect",
+    "put it on my calendar", "send it to my calendar", "save it to my calendar",
+    "im good", "i'm good", "we're good", "were good", "no changes",
+    "nothing to change", "no notes", "keep it", "as is", "leave it",
 }
 
 # Anything asking for a change, even wrapped in a "yes".
@@ -30,11 +36,18 @@ def normalise(text: str) -> str:
     return re.sub(r"[^a-z0-9' ]+", "", text.strip().lower()).strip()
 
 
+# Phrases that contain a change word but mean the opposite.
+NO_CHANGE = {"no changes", "nothing to change", "no change", "dont change anything",
+             "don't change anything", "no notes", "nothing to add"}
+
+
 def is_acceptance(text: str) -> bool:
     """True when the reply means 'yes, go ahead' rather than 'change this'."""
     cleaned = normalise(text)
     if not cleaned:
         return True                       # bare Enter still accepts
+    if cleaned in NO_CHANGE:
+        return True                       # says "change", means "don't"
     if CHANGE_WORDS.search(cleaned):
         return False                      # "yes but move the gym" is a change
     if cleaned in AFFIRMATIVES:

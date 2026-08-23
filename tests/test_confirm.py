@@ -8,6 +8,9 @@ from src.confirm import is_acceptance
     "sounds good", "perfect", "set", "all set", "done", "accept", "approve",
     "yes happy with this", "add to calendar", "go ahead", "lgtm",
     "yes thanks", "ok great", "book it", "finalize",
+    "love it", "I love it", "amazing", "awesome", "exactly", "that's it",
+    "thank you", "no changes", "nothing to change", "keep it", "leave it",
+    "put it on my calendar", "I'm good", "no notes",
 ])
 def test_accepts_natural_yeses(reply):
     assert is_acceptance(reply) is True, reply
