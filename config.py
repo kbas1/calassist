@@ -40,6 +40,11 @@ EVENING_OVERFLOW = [(time(21, 0), time(22, 0))]
 # Minimum gap between a proposed block and any adjacent event.
 BUFFER_MINUTES = 15
 
+# Where you normally travel from. Used to estimate commute time around events
+# that carry a location. Overridden by a different origin named in an event's
+# notes, or by one named in the priorities file.
+HOME_ADDRESS = os.getenv("HOME_ADDRESS", "40 N 4th St, Brooklyn, NY 11249")
+
 TARGET_CALENDAR_ID = os.getenv("CALASSIST_CALENDAR_ID", "primary")
 
 # Priorities live in a plain local file, NOT Google Docs. The Docs API has no

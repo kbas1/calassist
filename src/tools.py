@@ -108,6 +108,11 @@ def get_calendar_events(start_date: str, end_date: str) -> str:
         suffix = f"  [{', '.join(tags)}]" if tags else ""
         when = f"{e.start:%Y-%m-%d %H:%M}-{e.end:%H:%M}"
         lines.append(f"{when}  {e.summary}{suffix}")
+        if e.location:
+            lines.append(f"        location: {e.location}")
+        if e.description:
+            note = " ".join(e.description.split())[:200]
+            lines.append(f"        notes: {note}")
     return "\n".join(lines)
 
 

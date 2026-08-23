@@ -20,6 +20,8 @@ class Event:
     all_day: bool
     recurring: bool
     response_status: str
+    location: str = ""
+    description: str = ""
 
 
 def is_busy(event: Event) -> bool:
@@ -81,6 +83,8 @@ def fetch_events(start: datetime, end: datetime, calendar_id: str = "primary") -
                 all_day=all_day,
                 recurring="recurringEventId" in raw,
                 response_status=_my_response(raw),
+                location=raw.get("location") or "",
+                description=raw.get("description") or "",
             )
         )
     return events
