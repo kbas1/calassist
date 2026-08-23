@@ -1,0 +1,29 @@
+# ============================================================
+# SECRETS — these should never exist inside this repo at all.
+# Real credentials live in ~/.config/calassist/ (see SECURITY.md).
+# These patterns are a BACKSTOP, not the primary defense.
+# ============================================================
+token.json
+credentials.json
+client_secret*.json
+*.credentials.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+service-account*.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated output
+outputs/*
+!outputs/.gitkeep
+
+# macOS
+.DS_Store

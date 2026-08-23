@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Refuse to commit anything that looks like a credential.
+# Installed via: git config core.hooksPath .githooks
+set -euo pipefail
+
+FAIL=0
+
+# --- Layer 1: forbidden filenames (catches even `git add -f`) ---
+FORBIDDEN='(^|/)(token\.json|credentials\.json|client_secret.*\.json|service-account.*\.json|\.env)$'
+if git diff --cached --name-only | grep -Eq "$FORBIDDEN"; then
+  echo "BLOCKED - attempt to commit a credential file:"
+  git diff --cached --name-only | grep -E "$FORBIDDEN" | sed 's/^/    /'
+  FAIL=1
+fi
+
+# --- Layer 2: secret-shaped content in any staged file ---
+declare -a PATTERNS=(
+  'sk-ant-[A-Za-z0-9_-]{20,}'
+  'ya29\.[A-Za-z0-9_-]{20,}'
+  '"refresh_token"[[:space:]]*:[[:space:]]*"[^"]{20,}'
+  '"client_secret"[[:space:]]*:[[:space:]]*"[^"]{10,}'
+  '"private_key"[[:space:]]*:'
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+  'AIza[0-9A-Za-z_-]{35}'
+)
+for pat in "${PATTERNS[@]}"; do
+  if git diff --cached -U0 | grep -Eq "^\+.*${pat}"; then
+    echo "BLOCKED - staged content matches a secret pattern:"
+    echo "    ${pat}"
+    FAIL=1
+  fi
+done
+
+if [ "$FAIL" -ne 0 ]; then
+  echo ""
+  echo "Commit refused. Nothing was committed."
+  echo "Inspect what is staged with:  git diff --cached"
+  echo "This hook exists because this repo is public. Do not bypass it."
+  exit 1
+fi
