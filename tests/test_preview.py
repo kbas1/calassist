@@ -116,13 +116,13 @@ def test_full_hour_block_fills_the_cell(tmp_path):
     assert "top:0.0000%;height:100.0000%" in html
 
 
-def test_block_spanning_hours_splits_proportionally(tmp_path):
-    """17:45-18:30 = last quarter of 5 PM, then first half of 6 PM."""
+def test_block_spanning_hours_is_one_tall_element(tmp_path):
+    """17:45-18:30 is 45 min: one div starting 75% down, 75% of a row tall."""
     p = Proposal(blocks=[{"title": "Odd", "day": "2026-08-27", "start": "17:45",
                           "end": "18:30", "reason": "x", "category": "focus"}])
     html = open(render(p, [], str(tmp_path / "q.html"))).read()
-    assert "top:75.0000%;height:25.0000%" in html    # 5 PM cell
-    assert "top:0.0000%;height:50.0000%" in html     # 6 PM cell
+    assert "top:75.0000%;height:75.0000%" in html
+    assert len(re.findall(r'class="seg [^"]*cat-focus', html)) == 1
 
 
 def test_title_uses_lowercase_of(tmp_path):
@@ -131,18 +131,18 @@ def test_title_uses_lowercase_of(tmp_path):
     assert "Week Of" not in html
 
 
-def test_multi_hour_event_has_no_internal_divider(tmp_path):
-    """A single 7:30-8:30 event spans two hour cells but is ONE block.
+def test_multi_hour_event_is_a_single_unbroken_element(tmp_path):
+    """A 7:30-8:30 event must be ONE div, not two slices with a seam.
 
-    Its continuation slice must not carry a divider, or the event looks like
-    two separate back-to-back events.
+    Slicing it per hour cell put a cell border through the middle of a single
+    event, making it look like two back-to-back events.
     """
     p = Proposal(blocks=[{"title": "Tennis", "day": "2026-08-28", "start": "19:30",
                           "end": "20:30", "reason": "x", "category": "workout"}])
     html = open(render(p, [], str(tmp_path / "m.html"))).read()
-    segs = re.findall(r'<div class="(seg [^"]*cat-workout[^"]*)"', html)
-    assert len(segs) == 2, segs                       # spans two hour cells
-    assert sum("cont" in c for c in segs) == 1        # second slice continues
+    segs = re.findall(r'<div class="seg [^"]*cat-workout[^"]*" style="([^"]*)"', html)
+    assert len(segs) == 1, f"expected one element, got {len(segs)}"
+    assert "top:50.0000%;height:100.0000%" in segs[0]   # 60 min = a full row
 
 
 def test_two_adjacent_blocks_each_start_a_new_run(tmp_path):
@@ -165,18 +165,17 @@ def test_notes_render_in_the_side_column(tmp_path):
     assert html.index('<aside') < html.index("Did Not Fit")
 
 
-def test_label_font_fits_its_own_slice_not_the_whole_block(tmp_path):
-    """A 7:30-8:30 event has only 30 min of room in its first cell.
+def test_label_is_sized_against_the_whole_block(tmp_path):
+    """The label gets the block's full height to work with, not one slice.
 
-    Sizing the label against the block's full 60 minutes overflowed and the
-    title was clipped.
+    A 7:30-8:30 event is a full row tall, so a long title can use larger type
+    than the 30 minutes its first cell would have allowed.
     """
     p = Proposal(blocks=[{"title": "Potentially free tennis class",
                           "day": "2026-08-28", "start": "19:30", "end": "20:30",
                           "reason": "x", "category": "workout"}])
     html = open(render(p, [], str(tmp_path / "t.html"))).read()
     assert "Potentially free tennis class</div>" in html      # never truncated
-    labelled = re.findall(r'font-size:([\d.]+)px;[^"]*"[^>]*>Potentially', html)
-    assert labelled, "label was not rendered"
-    # 30 min of height at ~23px can only carry small type for a 29-char title
-    assert float(labelled[0]) <= 8.5, f"font {labelled[0]}px will overflow 23px"
+    size = re.findall(r'font-size:([\d.]+)px;[^"]*"[^>]*>Potentially', html)
+    assert size, "label was not rendered"
+    assert float(size[0]) >= 9, f"{size[0]}px is smaller than the block allows"

@@ -54,7 +54,7 @@ table { border-collapse:collapse; width:100%; min-width:660px; }
 th,td { border-left:1px solid var(--line); border-right:1px solid var(--line);
         border-top:1px solid var(--line); border-bottom:none; padding:0;
         height:46px; text-align:center; font-size:12px; line-height:1.15;
-        position:relative; }
+        position:relative; overflow:visible; }
 tr:last-child td { border-bottom:1px solid var(--line); }
 /* Flush to the cell edges and painted OVER the hour rule, so consecutive
    blocks read as one continuous run instead of being separated by seams. */
@@ -62,12 +62,7 @@ tr:last-child td { border-bottom:1px solid var(--line); }
        display:flex; align-items:center; justify-content:center; padding:0 3px;
        color:#fff; font-weight:600; line-height:1.18; text-align:center;
        white-space:normal; overflow-wrap:anywhere; hyphens:auto;
-       margin-top:-1px; padding-bottom:1px; z-index:1;
-       border-top:1px solid var(--bg); }
-/* A single event spanning several hours must read as ONE block, so its
-   continuation slices carry no divider. Only the START of a block does,
-   which is what separates two different events sitting back to back. */
-.seg.cont { border-top:none; }
+       z-index:2; box-shadow:0 0 0 1px var(--bg); }
 .seg.ex { background:var(--existing); color:var(--fg); font-weight:500; }
 th { padding:7px 4px; font-weight:600; font-size:.8rem; }
 th .d { color:var(--muted); font-weight:400; font-size:.72rem; }
@@ -110,43 +105,27 @@ def _fit_font(text: str, minutes: int) -> float:
 
 
 def _grid(proposal: Proposal, existing: list[Event], monday):
-    """Map (day_index, hour) -> list of segments inside that hour.
+    """Map (day_index, hour) -> blocks that START in that hour.
 
-    One row per hour, but each block is painted as a proportional slice of the
-    cell it sits in. A 3:30-4:00 block fills the bottom half of the 3 PM cell
-    rather than the whole thing — at hour granularity a 30-minute block and a
-    2-hour block looked identical.
+    One element per block, not one per hour cell. A block spanning 90 minutes
+    is a single div 150% of a row tall, so there is no seam and no cell border
+    running through the middle of one event — and its label can be sized
+    against the block's real height rather than a single slice of it.
     """
     cells: dict = {}
 
-    def paint(idx, start_min, end_min, cls, style, label):
-        # Collect the slices first so the label can go in the TALLEST one and
-        # be sized against that slice's real height. Sizing against the whole
-        # block's duration overflowed short leading slices — a 7:30-8:30 event
-        # has only 30 minutes of room in its first cell, not 60.
-        pieces = []
-        for h in range(start_min // 60, ((end_min - 1) // 60) + 1):
-            hour_start, hour_end = h * 60, h * 60 + 60
-            top = max(start_min, hour_start) - hour_start
-            bottom = min(end_min, hour_end) - hour_start
-            if bottom > top:
-                pieces.append((h, top, bottom))
-        if not pieces:
-            return
-
-        tallest = max(range(len(pieces)), key=lambda i: pieces[i][2] - pieces[i][1])
-        for i, (h, top, bottom) in enumerate(pieces):
-            span = bottom - top
-            cells.setdefault((idx, h), []).append(
-                (top / 60 * 100, span / 60 * 100,
-                 cls + ("" if i == 0 else " cont"), style,
-                 label if i == tallest else "", label, span)
-            )
+    def place(idx, start_min, end_min, cls, style, label):
+        h = start_min // 60
+        top = (start_min - h * 60) / 60 * 100
+        height = (end_min - start_min) / 60 * 100
+        cells.setdefault((idx, h), []).append(
+            (top, height, cls, style, label, end_min - start_min)
+        )
 
     for e in existing:
         idx = (e.start.date() - monday).days
         if 0 <= idx <= 6:
-            paint(idx, _minutes(f"{e.start:%H:%M}"), _minutes(f"{e.end:%H:%M}"),
+            place(idx, _minutes(f"{e.start:%H:%M}"), _minutes(f"{e.end:%H:%M}"),
                   "ex", "", e.summary)
 
     for b in proposal.blocks:
@@ -154,7 +133,7 @@ def _grid(proposal: Proposal, existing: list[Event], monday):
         if 0 <= idx <= 6:
             cat = b.get("category", "focus")
             colour = CATEGORY_CSS.get(cat, CATEGORY_CSS["focus"])
-            paint(idx, _minutes(b["start"]), _minutes(b["end"]),
+            place(idx, _minutes(b["start"]), _minutes(b["end"]),
                   f"blk cat-{cat}", f"background:{colour}", b["title"])
 
     return cells
@@ -173,6 +152,8 @@ def render(proposal: Proposal, existing: list[Event],
     # Zoom: render only the hours that carry something, padded by one either
     # side, rather than a fixed 7 AM-10 PM wall that is mostly empty.
     used_hours = [h for (_, h) in cells]
+    used_hours += [h + int((top + ht) // 100)
+                   for (_, h), segs in cells.items() for top, ht, *_ in segs]
     if used_hours:
         lo = max(min(HOURS), min(used_hours) - 1)
         hi = min(max(HOURS), max(used_hours) + 1)
@@ -191,8 +172,8 @@ def render(proposal: Proposal, existing: list[Event],
                 inner = "".join(
                     f'<div class="seg {cls}" style="top:{top:.4f}%;'
                     f'height:{ht:.4f}%;font-size:{_fit_font(text, dur):.1f}px;{style}" '
-                    f'title="{full}">{text}</div>'
-                    for top, ht, cls, style, text, full, dur in segs
+                    f'title="{text}">{text}</div>'
+                    for top, ht, cls, style, text, dur in segs
                 )
                 tds.append(f"<td{base}>{inner}</td>")
             else:
