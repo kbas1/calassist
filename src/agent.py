@@ -117,6 +117,10 @@ before an interview is focus, not workout.
 1. Read their priorities.
 2. Read their calendar for the target week.
 3. Reconcile the two before proposing anything:
+   - Some calendar entries are marked as scheduled by YOU on an earlier run.
+     Those are your own previous plan, not commitments the user made. Treat
+     that time as available and say so in warnings if you are replacing a
+     block you previously placed.
    - If a priority is already on the calendar, do NOT propose it again. Match
      on meaning, not exact text: "Dentist" matches "Dentist appointment -
      Dr. Chen". Record every skip in skipped_already_scheduled so they can

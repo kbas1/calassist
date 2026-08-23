@@ -23,6 +23,11 @@ class Event:
     location: str = ""
     description: str = ""
 
+    @property
+    def written_by_calassist(self) -> bool:
+        """True for events this app created on a previous run."""
+        return "Scheduled by CalAssist" in self.description
+
 
 def is_busy(event: Event) -> bool:
     """Does this event actually consume time?

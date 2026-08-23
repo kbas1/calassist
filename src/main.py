@@ -63,7 +63,11 @@ def main() -> int:
 
     def on_proposal(proposal: Proposal) -> str | None:
         """Show the week, then accept it or send feedback back to the agent."""
-        existing = fetch_all_events(start, start + timedelta(days=7))
+        # Exclude blocks CalAssist wrote on a previous run: the proposal
+        # supersedes them, and drawing both stacks a grey copy under every
+        # coloured block.
+        existing = [e for e in fetch_all_events(start, start + timedelta(days=7))
+                    if not e.written_by_calassist]
         path = render(proposal, existing)
         _summarise(proposal, path)
         if not args.no_open:

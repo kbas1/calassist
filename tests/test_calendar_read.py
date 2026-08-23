@@ -36,3 +36,12 @@ def test_tentative_meeting_is_busy():
 def test_event_with_no_response_status_is_busy():
     """Events you created yourself have no attendee status."""
     assert is_busy(_event(response_status="")) is True
+
+
+def test_recognises_its_own_events():
+    """Blocks CalAssist wrote carry a marker in their description."""
+    mine = _event(description="Scheduled by CalAssist.\n\nWhy here: clear evening")
+    theirs = _event(description="Dinner with friends")
+    assert mine.written_by_calassist is True
+    assert theirs.written_by_calassist is False
+    assert _event().written_by_calassist is False      # no description at all

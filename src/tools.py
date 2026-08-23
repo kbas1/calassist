@@ -113,6 +113,9 @@ def get_calendar_events(start_date: str, end_date: str) -> str:
             tags.append("recurring")
         if not is_busy(e):
             tags.append("DECLINED - this time is actually free")
+        if e.written_by_calassist:
+            tags.append("YOU scheduled this on an earlier run - it can be "
+                        "replaced or moved, it is not a fixed commitment")
         suffix = f"  [{', '.join(tags)}]" if tags else ""
         when = (f"{e.start:%a %Y-%m-%d} "
                 f"{span_12h(f'{e.start:%H:%M}', f'{e.end:%H:%M}')}")
