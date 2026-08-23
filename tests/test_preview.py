@@ -64,7 +64,7 @@ def test_times_are_twelve_hour(tmp_path):
 
 def test_title_is_owner_and_week(tmp_path):
     html = open(render(_proposal(), _existing(), str(tmp_path / "w.html"))).read()
-    assert "Khushi's Week Of Aug-24-2026" in html
+    assert "Khushi's Week of Aug-24-2026" in html
 
 
 def test_notes_replaces_watch_out(tmp_path):
@@ -91,3 +91,32 @@ def test_skipped_section_is_not_rendered(tmp_path):
     html = open(render(_proposal(), _existing(), str(tmp_path / "w.html"))).read()
     assert "Already On Your Calendar" not in html
     assert "Dentist" not in html
+
+
+def test_block_height_reflects_real_duration(tmp_path):
+    """A 30-min block must not paint the same area as a 2-hour one.
+
+    At hour resolution both filled exactly one cell, which made the chart
+    misrepresent the shape of the week.
+    """
+    short = Proposal(blocks=[{"title": "Short", "day": "2026-08-27", "start": "17:00",
+                              "end": "17:30", "reason": "x", "category": "errand"}])
+    long_ = Proposal(blocks=[{"title": "Long", "day": "2026-08-27", "start": "17:00",
+                              "end": "19:00", "reason": "x", "category": "errand"}])
+    n_short = open(render(short, [], str(tmp_path / "s.html"))).read().count("cat-errand")
+    n_long = open(render(long_, [], str(tmp_path / "l.html"))).read().count("cat-errand")
+    assert n_long == n_short * 4, f"2h should be 4x a 30m block, got {n_long} vs {n_short}"
+
+
+def test_quarter_hour_starts_are_honoured(tmp_path):
+    """17:45-18:30 must start three quarters into the 5 PM hour."""
+    p = Proposal(blocks=[{"title": "Odd", "day": "2026-08-27", "start": "17:45",
+                          "end": "18:30", "reason": "x", "category": "focus"}])
+    html = open(render(p, [], str(tmp_path / "q.html"))).read()
+    assert html.count("cat-focus") == 3          # 45 min = 3 quarter-hour slots
+
+
+def test_title_uses_lowercase_of(tmp_path):
+    html = open(render(_proposal(), _existing(), str(tmp_path / "t.html"))).read()
+    assert "Week of Aug-24-2026" in html
+    assert "Week Of" not in html

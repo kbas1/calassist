@@ -39,17 +39,21 @@ body { background:var(--bg); color:var(--fg); margin:0; padding:2rem 1.5rem;
 .wrap { max-width:1180px; margin:0 auto; }
 h1 { font-size:1.5rem; margin:0 0 .2rem; letter-spacing:-.01em; }
 .sub { color:var(--muted); margin:0 0 1.25rem; font-size:.92rem; }
-.key { display:flex; gap:1.1rem; flex-wrap:wrap; align-items:center;
-       margin:0 0 1.25rem; font-size:.82rem; color:var(--muted); }
-.sw { display:inline-block; width:13px; height:13px; border-radius:3px;
-      margin-right:5px; vertical-align:-2px; border:1px solid rgba(0,0,0,.12); }
+.key { display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center;
+       margin:0 0 1.5rem; font-size:1rem; color:var(--fg); font-weight:500; }
+.sw { display:inline-block; width:19px; height:19px; border-radius:4px;
+      margin-right:9px; vertical-align:-4px; border:1px solid rgba(0,0,0,.12); }
 .scroll { overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
 table { border-collapse:collapse; width:100%; min-width:660px; }
-th,td { border:1px solid var(--line); padding:0; height:38px; text-align:center;
-        font-size:12.5px; overflow:hidden; line-height:1.25; }
+th,td { border-left:1px solid var(--line); border-right:1px solid var(--line);
+        border-top:none; border-bottom:none; padding:0; height:15px;
+        text-align:center; font-size:11.5px; overflow:hidden; line-height:1.1; }
+td.hr, th { border-top:1px solid var(--line); }
+td.cont { border-top:none; }
+tr:last-child td { border-bottom:1px solid var(--line); }
 th { padding:7px 4px; font-weight:600; font-size:.8rem; }
 th .d { color:var(--muted); font-weight:400; font-size:.72rem; }
-td.h { width:64px; white-space:nowrap; color:var(--muted); font-size:10px; padding-right:6px;
+td.h { width:64px; white-space:nowrap; border-left:none; border-right:none; color:var(--muted); font-size:10px; padding-right:6px;
        text-align:right; border-left:none; }
 td.work { background:var(--work); }
 td.ex { background:var(--existing); }
@@ -63,24 +67,46 @@ li { margin-bottom:.35rem; }
 """
 
 
+SLOT_MINUTES = 15
+SLOTS_PER_HOUR = 60 // SLOT_MINUTES
+
+
+def _slot(hhmm: str) -> int:
+    """'17:45' -> absolute quarter-hour index within the day."""
+    h, m = int(hhmm[:2]), int(hhmm[3:5])
+    return h * SLOTS_PER_HOUR + m // SLOT_MINUTES
+
+
 def _grid(proposal: Proposal, existing: list[Event], monday):
-    """Map (day_index, hour) -> (css_class, inline_style, label)."""
+    """Map (day_index, slot) -> (css_class, inline_style, label, is_first_slot).
+
+    Resolution is 15 minutes, not one hour. At hour resolution a 30-minute
+    block and a 90-minute block paint identically, which makes the chart
+    misrepresent the shape of the week.
+    """
     cells = {}
+
+    def paint(idx, start_slot, end_slot, cls, style, label):
+        for n, slot in enumerate(range(start_slot, max(start_slot + 1, end_slot))):
+            cells[(idx, slot)] = (cls, style, label, n == 0)
+
     for e in existing:
         idx = (e.start.date() - monday).days
         if not 0 <= idx <= 6:
             continue
-        for h in range(e.start.hour, max(e.start.hour + 1, e.end.hour)):
-            cells[(idx, h)] = ("ex", "", e.summary)
+        paint(idx,
+              _slot(f"{e.start:%H:%M}"), _slot(f"{e.end:%H:%M}"),
+              "ex", "", e.summary)
+
     for b in proposal.blocks:
         idx = (datetime.fromisoformat(b["day"]).date() - monday).days
         if not 0 <= idx <= 6:
             continue
         cat = b.get("category", "focus")
         colour = CATEGORY_CSS.get(cat, CATEGORY_CSS["focus"])
-        sh, eh = int(b["start"][:2]), int(b["end"][:2])
-        for h in range(sh, max(sh + 1, eh)):
-            cells[(idx, h)] = (f"blk cat-{cat}", f"background:{colour}", b["title"])
+        paint(idx, _slot(b["start"]), _slot(b["end"]),
+              f"blk cat-{cat}", f"background:{colour}", b["title"])
+
     return cells
 
 
@@ -96,27 +122,35 @@ def render(proposal: Proposal, existing: list[Event],
 
     # Zoom: render only the hours that carry something, padded by one either
     # side, rather than a fixed 7 AM-10 PM wall that is mostly empty.
-    used_hours = [h for (_, h) in cells]
-    if used_hours:
-        lo = max(min(HOURS), min(used_hours) - 1)
-        hi = min(max(HOURS), max(used_hours) + 1)
+    used = [sl for (_, sl) in cells]
+    if used:
+        lo = max(min(HOURS) * SLOTS_PER_HOUR, min(used) - SLOTS_PER_HOUR)
+        hi = min(max(HOURS) * SLOTS_PER_HOUR + SLOTS_PER_HOUR - 1,
+                 max(used) + SLOTS_PER_HOUR)
     else:
-        lo, hi = min(HOURS), max(HOURS)
-    hours = list(range(lo, hi + 1))
+        lo = min(HOURS) * SLOTS_PER_HOUR
+        hi = max(HOURS) * SLOTS_PER_HOUR
+    lo -= lo % SLOTS_PER_HOUR                      # start on a whole hour
+    slots = list(range(lo, hi + 1))
 
     rows = []
-    for h in hours:
-        tds = [f'<td class="h">{hour_label(h)}</td>']
+    for sl in slots:
+        h, on_hour = sl // SLOTS_PER_HOUR, sl % SLOTS_PER_HOUR == 0
+        label_cell = (f'<td class="h hr">{hour_label(h)}</td>' if on_hour
+                      else '<td class="h"></td>')
+        tds = [label_cell]
         for d in range(7):
-            hit = cells.get((d, h))
+            hit = cells.get((d, sl))
             if hit:
-                cls, style, label = hit
+                cls, style, label, first = hit
                 st = f' style="{style}"' if style else ""
-                tds.append(f'<td class="{cls}"{st} title="{label}">{label[:20]}</td>')
+                text = label[:20] if first else ""
+                edge = "" if first else " cont"
+                tds.append(f'<td class="{cls}{edge}"{st} title="{label}">{text}</td>')
             elif d < 5 and blocked_start.hour <= h < blocked_end.hour:
                 tds.append('<td class="work" title="Work — not visible to CalAssist"></td>')
             else:
-                tds.append("<td></td>")
+                tds.append(f'<td class="{"hr" if on_hour else ""}"></td>')
         rows.append(f"<tr>{''.join(tds)}</tr>")
 
     headers = "".join(
@@ -141,7 +175,7 @@ def render(proposal: Proposal, existing: list[Event],
         for n in proposal.not_scheduled])
     warns = section("Notes", [f"<li>{w}</li>" for w in proposal.warnings])
 
-    title = f"{config.OWNER_NAME}'s Week Of {monday:%b}-{monday.day}-{monday.year}"
+    title = f"{config.OWNER_NAME}'s Week of {monday:%b}-{monday.day}-{monday.year}"
     tzname = datetime.now(config.TIMEZONE).strftime("%Z")
 
     mins = sum(
