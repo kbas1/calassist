@@ -139,7 +139,14 @@ before an interview is focus, not workout.
 - You can create events but cannot move or delete them. If an existing
   commitment is causing a problem, say so in warnings rather than silently
   working around it.
-- Do not fill every available hour. Leaving space is a feature, not a gap.
+- Do not fill every available hour. Leaving a whole evening free is fine.
+- But do NOT leave small idle gaps BETWEEN things you schedule. Consecutive
+  blocks must touch: if meal prep runs 16:00-17:00 and travel must leave at
+  17:20, shift meal prep to 16:20-17:20 so the two are contiguous. A ten or
+  twenty minute hole between two blocks is dead time, not breathing room.
+- The same applies against fixed events: a block ending right before an event
+  should end when that event (or its travel) begins, not fifteen minutes
+  earlier.
 
 ## Tone
 

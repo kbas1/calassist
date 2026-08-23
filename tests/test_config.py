@@ -17,5 +17,6 @@ def test_overflow_windows_do_not_intrude_on_work():
         assert overflow_end <= blocked_start
 
 
-def test_buffer_is_positive():
-    assert config.BUFFER_MINUTES > 0
+def test_buffer_is_not_negative():
+    """0 is the intended default — travel blocks replaced the buffer."""
+    assert config.BUFFER_MINUTES >= 0

@@ -75,27 +75,31 @@ def test_work_hours_are_never_offered():
         assert start.hour >= 17
 
 
-def test_event_splits_the_evening_and_applies_buffer():
-    """A 6-7pm event leaves 5:00-5:45 and 7:15-9:00 after 15-min buffers."""
+def test_event_splits_the_evening_with_no_idle_gap():
+    """A 6-7pm event leaves 5:00-6:00 and 7:00-9:00 — slots touch the event.
+
+    BUFFER_MINUTES is 0 by design: travel is an explicit block, so a buffer
+    would only manufacture dead time between things that should be contiguous.
+    """
     slots = find_free_slots([busy(MONDAY, 18, 19)], MONDAY, MONDAY, minimum_minutes=30)
     assert slots == [
-        (dt(MONDAY, 17), dt(MONDAY, 17, 45), False),
-        (dt(MONDAY, 19, 15), dt(MONDAY, 21), False),
+        (dt(MONDAY, 17), dt(MONDAY, 18), False),
+        (dt(MONDAY, 19), dt(MONDAY, 21), False),
     ]
 
 
 def test_slots_shorter_than_minimum_are_dropped():
-    """Same 6-7pm event. The gaps are 45 min and 105 min.
+    """Same 6-7pm event. The gaps are 60 min and 120 min.
 
-    Asking for 90 keeps only the later one — the 45-min sliver is dropped.
+    Asking for 90 keeps only the later one — the 60-min sliver is dropped.
     """
     slots = find_free_slots([busy(MONDAY, 18, 19)], MONDAY, MONDAY, minimum_minutes=90)
-    assert slots == [(dt(MONDAY, 19, 15), dt(MONDAY, 21), False)]
+    assert slots == [(dt(MONDAY, 19), dt(MONDAY, 21), False)]
 
 
 def test_nothing_qualifies_when_minimum_exceeds_every_gap():
-    """Asking for 2 hours when the largest gap is 105 minutes."""
-    slots = find_free_slots([busy(MONDAY, 18, 19)], MONDAY, MONDAY, minimum_minutes=120)
+    """Asking for 3 hours when the largest gap is 2 hours."""
+    slots = find_free_slots([busy(MONDAY, 18, 19)], MONDAY, MONDAY, minimum_minutes=180)
     assert slots == []
 
 

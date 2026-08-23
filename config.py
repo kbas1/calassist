@@ -38,8 +38,10 @@ WEEKEND_BOOKABLE = [(time(9, 0), time(21, 0))]
 WEEKDAY_OVERFLOW = [(time(7, 0), time(8, 30))]
 EVENING_OVERFLOW = [(time(21, 0), time(22, 0))]
 
-# Minimum gap between a proposed block and any adjacent event.
-BUFFER_MINUTES = 15
+# Gap enforced between a proposed block and an adjacent event.
+# Zero by design: travel is now its own explicit block, so this buffer would
+# only manufacture idle white space between things that should touch.
+BUFFER_MINUTES = int(os.getenv("BUFFER_MINUTES", "0"))
 
 # Where you travel from. Used to estimate commute around located events.
 # Overridden by an origin named in an event's notes, or in the priorities file.
