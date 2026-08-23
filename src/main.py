@@ -13,6 +13,7 @@ from src.agent import opening_message, run_conversation
 from src.calendar_read import fetch_all_events
 from src.preview import render
 from src.priorities_read import target_monday
+from src.confirm import is_acceptance
 from src.timefmt import span_12h
 from src.tools import Proposal
 from src.writer import create_events
@@ -51,8 +52,10 @@ def main() -> int:
     monday = _monday(args.week)
     sunday = monday + timedelta(days=6)
     print(f"CalAssist — planning {monday:%b %-d} to {sunday:%b %-d}")
-    print("Type your answers, or 'quit' to stop. "
-          "Nothing is written without asking.")
+    print("─" * 64)
+    print("You are now talking to CalAssist, not the shell — typed text goes")
+    print("to the agent. Type 'quit' to leave. Nothing is written unasked.")
+    print("─" * 64)
     print("First reply usually takes 30-60 seconds while it reads your "
           "priorities and calendar.\n")
 
@@ -65,9 +68,10 @@ def main() -> int:
         _summarise(proposal, path)
         if not args.no_open:
             webbrowser.open(f"file://{path}")
-        print("\nHappy with this? Press Enter to accept.")
-        print("Or tell me what to change (e.g. 'move the roadmap block to Sunday').\n")
-        return input("You: ").strip() or None
+        print("\n  Type 'yes' to put this on your calendar,")
+        print("  or say what to change (e.g. 'move the gym to Tuesday').\n")
+        reply = input("  yes / change > ").strip()
+        return None if is_acceptance(reply) else reply
 
     proposal = run_conversation(opening_message(monday), on_proposal=on_proposal)
     if proposal is None:
@@ -80,8 +84,8 @@ def main() -> int:
         return 0
 
     answer = input(f"\nWrite {len(proposal.blocks)} events to your "
-                   f"CalAssist calendar? [y/N] ").strip().lower()
-    if answer != "y":
+                   f"CalAssist calendar? [yes/no] ").strip()
+    if not answer or not is_acceptance(answer):
         print("Nothing written.")
         return 0
 
