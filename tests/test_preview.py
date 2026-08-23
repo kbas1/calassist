@@ -1,3 +1,4 @@
+import re
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -128,3 +129,54 @@ def test_title_uses_lowercase_of(tmp_path):
     html = open(render(_proposal(), _existing(), str(tmp_path / "t.html"))).read()
     assert "Week of Aug-24-2026" in html
     assert "Week Of" not in html
+
+
+def test_multi_hour_event_has_no_internal_divider(tmp_path):
+    """A single 7:30-8:30 event spans two hour cells but is ONE block.
+
+    Its continuation slice must not carry a divider, or the event looks like
+    two separate back-to-back events.
+    """
+    p = Proposal(blocks=[{"title": "Tennis", "day": "2026-08-28", "start": "19:30",
+                          "end": "20:30", "reason": "x", "category": "workout"}])
+    html = open(render(p, [], str(tmp_path / "m.html"))).read()
+    segs = re.findall(r'<div class="(seg [^"]*cat-workout[^"]*)"', html)
+    assert len(segs) == 2, segs                       # spans two hour cells
+    assert sum("cont" in c for c in segs) == 1        # second slice continues
+
+
+def test_two_adjacent_blocks_each_start_a_new_run(tmp_path):
+    """Back-to-back but DIFFERENT events keep a visible boundary."""
+    p = Proposal(blocks=[
+        {"title": "A", "day": "2026-08-28", "start": "17:00", "end": "18:00",
+         "reason": "x", "category": "focus"},
+        {"title": "B", "day": "2026-08-28", "start": "18:00", "end": "19:00",
+         "reason": "x", "category": "errand"},
+    ])
+    html = open(render(p, [], str(tmp_path / "a.html"))).read()
+    segs = re.findall(r'<div class="(seg [^"]*)"', html)
+    assert len(segs) == 2, segs
+    assert not any("cont" in c for c in segs)         # both start their own run
+
+
+def test_notes_render_in_the_side_column(tmp_path):
+    html = open(render(_proposal(), _existing(), str(tmp_path / "s.html"))).read()
+    assert '<aside class="side">' in html
+    assert html.index('<aside') < html.index("Did Not Fit")
+
+
+def test_label_font_fits_its_own_slice_not_the_whole_block(tmp_path):
+    """A 7:30-8:30 event has only 30 min of room in its first cell.
+
+    Sizing the label against the block's full 60 minutes overflowed and the
+    title was clipped.
+    """
+    p = Proposal(blocks=[{"title": "Potentially free tennis class",
+                          "day": "2026-08-28", "start": "19:30", "end": "20:30",
+                          "reason": "x", "category": "workout"}])
+    html = open(render(p, [], str(tmp_path / "t.html"))).read()
+    assert "Potentially free tennis class</div>" in html      # never truncated
+    labelled = re.findall(r'font-size:([\d.]+)px;[^"]*"[^>]*>Potentially', html)
+    assert labelled, "label was not rendered"
+    # 30 min of height at ~23px can only carry small type for a 29-char title
+    assert float(labelled[0]) <= 8.5, f"font {labelled[0]}px will overflow 23px"

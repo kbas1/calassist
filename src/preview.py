@@ -36,7 +36,13 @@ CSS = """
 * { box-sizing:border-box; }
 body { background:var(--bg); color:var(--fg); margin:0; padding:2rem 1.5rem;
        font:15px/1.55 ui-sans-serif,system-ui,-apple-system,sans-serif; }
-.wrap { max-width:1180px; margin:0 auto; }
+.wrap { max-width:1440px; margin:0 auto; }
+.cols { display:flex; gap:1.75rem; align-items:flex-start; }
+.chart { flex:1 1 auto; min-width:0; }
+.side { flex:0 0 290px; }
+.side section:first-child { margin-top:0; }
+@media (max-width:940px) { .cols { flex-direction:column; }
+                           .side { flex:1 1 auto; width:100%; } }
 h1 { font-size:1.5rem; margin:0 0 .2rem; letter-spacing:-.01em; }
 .sub { color:var(--muted); margin:0 0 1.25rem; font-size:.92rem; }
 .key { display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center;
@@ -56,7 +62,12 @@ tr:last-child td { border-bottom:1px solid var(--line); }
        display:flex; align-items:center; justify-content:center; padding:0 3px;
        color:#fff; font-weight:600; line-height:1.18; text-align:center;
        white-space:normal; overflow-wrap:anywhere; hyphens:auto;
-       margin-top:-1px; padding-bottom:1px; z-index:1; }
+       margin-top:-1px; padding-bottom:1px; z-index:1;
+       border-top:1px solid var(--bg); }
+/* A single event spanning several hours must read as ONE block, so its
+   continuation slices carry no divider. Only the START of a block does,
+   which is what separates two different events sitting back to back. */
+.seg.cont { border-top:none; }
 .seg.ex { background:var(--existing); color:var(--fg); font-weight:500; }
 th { padding:7px 4px; font-weight:600; font-size:.8rem; }
 th .d { color:var(--muted); font-weight:400; font-size:.72rem; }
@@ -109,18 +120,28 @@ def _grid(proposal: Proposal, existing: list[Event], monday):
     cells: dict = {}
 
     def paint(idx, start_min, end_min, cls, style, label):
-        first = True
+        # Collect the slices first so the label can go in the TALLEST one and
+        # be sized against that slice's real height. Sizing against the whole
+        # block's duration overflowed short leading slices — a 7:30-8:30 event
+        # has only 30 minutes of room in its first cell, not 60.
+        pieces = []
         for h in range(start_min // 60, ((end_min - 1) // 60) + 1):
             hour_start, hour_end = h * 60, h * 60 + 60
             top = max(start_min, hour_start) - hour_start
             bottom = min(end_min, hour_end) - hour_start
-            if bottom <= top:
-                continue
+            if bottom > top:
+                pieces.append((h, top, bottom))
+        if not pieces:
+            return
+
+        tallest = max(range(len(pieces)), key=lambda i: pieces[i][2] - pieces[i][1])
+        for i, (h, top, bottom) in enumerate(pieces):
+            span = bottom - top
             cells.setdefault((idx, h), []).append(
-                (top / 60 * 100, (bottom - top) / 60 * 100, cls, style,
-                 label if first else "", label, end_min - start_min)
+                (top / 60 * 100, span / 60 * 100,
+                 cls + ("" if i == 0 else " cont"), style,
+                 label if i == tallest else "", label, span)
             )
-            first = False
 
     for e in existing:
         idx = (e.start.date() - monday).days
@@ -218,11 +239,13 @@ def render(proposal: Proposal, existing: list[Event],
 <p class="sub">{len(proposal.blocks)} Proposed Blocks &middot; {mins // 60}h {mins % 60}m
    &middot; All Times {tzname}</p>
 <div class="key">{key}</div>
-<div class="scroll"><table>
-<tr><th></th>{headers}</tr>
-{''.join(rows)}
-</table></div>
-{missed}{warns}
+<div class="cols">
+  <div class="chart"><div class="scroll"><table>
+  <tr><th></th>{headers}</tr>
+  {''.join(rows)}
+  </table></div></div>
+  <aside class="side">{missed}{warns}</aside>
+</div>
 </div></body></html>"""
 
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
