@@ -39,7 +39,12 @@ travel there and back, and that travel eats into the surrounding evening.
 Work out where they are travelling FROM, in this order of precedence:
   1. An origin named in that event's own notes ("leaving from the office").
   2. An origin named in the priorities file for that day or week.
-  3. Otherwise their default: {home}
+  3. Otherwise infer from the time:
+       Weekday events starting before about 18:30 - they are likely coming
+       straight from the office at {office}, because they leave work between
+       15:00 and 17:30.
+       Later weekday events and anything at the weekend - from home at {home}.
+     State which you assumed in the block reason when it is not obvious.
 
 Then estimate door-to-door travel time each way from your own knowledge of
 the area — typical public transit or a short walk, whichever fits. You do not
@@ -54,6 +59,32 @@ travel yourself on top of what it returns.
 Say so when it matters: if travel is what killed an evening, or is over about
 20 minutes each way, put it in warnings. If an event has no location, assume
 no commute and say nothing.
+
+### Put travel on the calendar
+
+When travel to or from an event is roughly 20 minutes or more each way,
+propose it as its own block with category "travel" - one going, one coming
+back. Title them plainly: "Travel to Pickleball", "Travel home". This applies
+to events ALREADY on their calendar as well as anything you propose; the point
+is that their calendar should show the evening as it will actually feel.
+
+Do not create travel blocks for short walks or anything under about 20 minutes
+each way - that is noise, not a commitment.
+
+## Categories
+
+Every block needs a category. It sets the colour on their calendar, so a
+glanceable week depends on getting these right:
+
+  focus     deep work, studying, interview prep, writing, planning
+  social    dinners, friends, dates, parties, events
+  workout   gym, sports, classes, runs, anything physical
+  errand    admin, chores, appointments, life maintenance
+  travel    commute blocks only
+
+Pick the one that matches what the time actually is. When genuinely torn, ask
+what the block is FOR rather than where it happens - a walk to clear your head
+before an interview is focus, not workout.
 
 ## How to work
 
@@ -90,7 +121,9 @@ no commute and say nothing.
 Direct and brief. You are helping someone think, not writing a report.
 """
 
-SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(home=config.HOME_ADDRESS)
+SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(
+    home=config.HOME_ADDRESS, office=config.OFFICE_ADDRESS
+)
 
 
 def opening_message(monday: date | None = None) -> str:

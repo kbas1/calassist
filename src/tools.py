@@ -20,7 +20,7 @@ TIME_RE = re.compile(r"^\d{2}:\d{2}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 REQUIRED_KEYS = ["blocks", "skipped_already_scheduled", "not_scheduled", "warnings"]
-BLOCK_KEYS = ["title", "day", "start", "end", "reason"]
+BLOCK_KEYS = ["title", "day", "start", "end", "reason", "category"]
 
 
 @dataclass
@@ -59,6 +59,11 @@ def validate_proposal(payload: dict) -> list[str]:
                 errors.append(
                     f"block {i} end {block['end']} is at or before start {block['start']}"
                 )
+        if block["category"] not in config.CATEGORIES:
+            errors.append(
+                f"block {i} category '{block['category']}' is not one of "
+                f"{', '.join(config.CATEGORIES)}"
+            )
 
     return errors
 
@@ -159,7 +164,8 @@ def submit_proposal(proposal_json: str) -> str:
     Args:
         proposal_json: A JSON object with exactly these four keys:
             blocks: list of {title, day (YYYY-MM-DD), start (HH:MM),
-                end (HH:MM), reason}
+                end (HH:MM), reason, category}
+                category must be one of: focus, social, workout, errand, travel
             skipped_already_scheduled: list of {item, matched}
             not_scheduled: list of {item, why}
             warnings: list of strings

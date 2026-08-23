@@ -13,6 +13,7 @@ def _payload(blocks):
 GOOD_BLOCK = {
     "title": "Prep", "day": "2026-08-25",
     "start": "17:00", "end": "19:00", "reason": "first clear evening",
+    "category": "focus",
 }
 
 
@@ -53,3 +54,19 @@ def test_end_before_start_is_reported():
 def test_zero_length_block_is_reported():
     bad = {**GOOD_BLOCK, "start": "17:00", "end": "17:00"}
     assert validate_proposal(_payload([bad])) != []
+
+
+def test_unknown_category_is_reported():
+    bad = {**GOOD_BLOCK, "category": "deep-work"}
+    assert any("deep-work" in e for e in validate_proposal(_payload([bad])))
+
+
+def test_missing_category_is_reported():
+    bad = {k: v for k, v in GOOD_BLOCK.items() if k != "category"}
+    assert any("category" in e for e in validate_proposal(_payload([bad])))
+
+
+def test_every_configured_category_is_accepted():
+    import config
+    for cat in config.CATEGORIES:
+        assert validate_proposal(_payload([{**GOOD_BLOCK, "category": cat}])) == []

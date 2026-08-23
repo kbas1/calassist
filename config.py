@@ -40,10 +40,21 @@ EVENING_OVERFLOW = [(time(21, 0), time(22, 0))]
 # Minimum gap between a proposed block and any adjacent event.
 BUFFER_MINUTES = 15
 
-# Where you normally travel from. Used to estimate commute time around events
-# that carry a location. Overridden by a different origin named in an event's
-# notes, or by one named in the priorities file.
+# Where you travel from. Used to estimate commute around located events.
+# Overridden by an origin named in an event's notes, or in the priorities file.
 HOME_ADDRESS = os.getenv("HOME_ADDRESS", "40 N 4th St, Brooklyn, NY 11249")
+OFFICE_ADDRESS = os.getenv("OFFICE_ADDRESS", "1230 Avenue of the Americas, New York, NY 10020")
+
+# Event categories and their Google Calendar colours.
+# Google exposes 11 fixed palette slots by ID; these are its own names for them.
+CATEGORY_COLORS = {
+    "focus":   "9",   # Blueberry  - deep work, studying, prep
+    "social":  "4",   # Flamingo   - dinners, friends, events
+    "workout": "10",  # Basil      - gym, sports, classes
+    "errand":  "5",   # Banana     - admin, chores, appointments
+    "travel":  "8",   # Graphite   - commute; deliberately muted, it is overhead
+}
+CATEGORIES = list(CATEGORY_COLORS)
 
 TARGET_CALENDAR_ID = os.getenv("CALASSIST_CALENDAR_ID", "primary")
 
