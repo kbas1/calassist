@@ -1,7 +1,7 @@
 """CalAssist CLI.
 
-    python -m src.main plan              propose only, write nothing
-    python -m src.main plan --write      propose, then ask before writing
+    python -m src.main plan              propose and revise; write nothing
+    python -m src.main plan --write      same, then ask before creating events
 """
 import argparse
 import sys
@@ -12,11 +12,28 @@ from src.agent import opening_message, run_conversation
 from src.calendar_read import fetch_events
 from src.preview import render
 from src.priorities_read import target_monday
+from src.tools import Proposal
 from src.writer import create_events
 
 
 def _monday(week_arg: str | None) -> date:
     return datetime.fromisoformat(week_arg).date() if week_arg else target_monday()
+
+
+def _summarise(proposal: Proposal, path: str) -> None:
+    print("\n" + "=" * 64)
+    for b in sorted(proposal.blocks, key=lambda x: (x["day"], x["start"])):
+        day = datetime.fromisoformat(b["day"]).date()
+        print(f"  {day:%a %m/%d}  {b['start']}-{b['end']}  "
+              f"[{b['category']}]  {b['title']}")
+    for s in proposal.skipped_already_scheduled:
+        print(f"  skipped (already on calendar): {s['item']}")
+    for n in proposal.not_scheduled:
+        print(f"  DID NOT FIT: {n['item']} — {n['why']}")
+    for w in proposal.warnings:
+        print(f"  warning: {w}")
+    print(f"\n  Visual preview:  file://{path}")
+    print("=" * 64)
 
 
 def main() -> int:
@@ -30,36 +47,30 @@ def main() -> int:
     monday = _monday(args.week)
     sunday = monday + timedelta(days=6)
     print(f"CalAssist — planning {monday:%b %-d} to {sunday:%b %-d}")
-    print(f"Type your answers, or 'quit' to stop. Nothing is written without asking.\n")
-
-    proposal = run_conversation(opening_message(monday))
-    if proposal is None:
-        print("\nNo proposal made. Nothing was changed.")
-        return 1
+    print("Type your answers, or 'quit' to stop. "
+          "Nothing is written without asking.\n")
 
     start = datetime.combine(monday, datetime.min.time(), tzinfo=config.TIMEZONE)
-    existing = fetch_events(start, start + timedelta(days=7))
-    path = render(proposal, existing)
 
-    print("\n" + "=" * 64)
-    for b in sorted(proposal.blocks, key=lambda x: (x["day"], x["start"])):
-        day = datetime.fromisoformat(b["day"]).date()
-        print(f"  {day:%a %m/%d}  {b['start']}-{b['end']}  "
-              f"[{b['category']}]  {b['title']}")
-    for s in proposal.skipped_already_scheduled:
-        print(f"  skipped (already on calendar): {s['item']}")
-    for n in proposal.not_scheduled:
-        print(f"  DID NOT FIT: {n['item']} — {n['why']}")
-    for w in proposal.warnings:
-        print(f"  warning: {w}")
-    print(f"\n  Visual preview:  file://{path}")
-    print("=" * 64 + "\n")
+    def on_proposal(proposal: Proposal) -> str | None:
+        """Show the week, then accept it or send feedback back to the agent."""
+        existing = fetch_events(start, start + timedelta(days=7))
+        _summarise(proposal, render(proposal, existing))
+        print("\nHappy with this? Press Enter to accept.")
+        print("Or tell me what to change (e.g. 'move the roadmap block to Sunday').\n")
+        return input("You: ").strip() or None
+
+    proposal = run_conversation(opening_message(monday), on_proposal=on_proposal)
+    if proposal is None:
+        print("\nNo proposal accepted. Nothing was changed.")
+        return 1
 
     if not args.write:
-        print("Preview only — nothing written. Re-run with --write to create these.")
+        print("\nAccepted — but this was a preview run, so nothing was written.")
+        print("Re-run with --write to create these events.")
         return 0
 
-    answer = input(f"Write {len(proposal.blocks)} events to your "
+    answer = input(f"\nWrite {len(proposal.blocks)} events to your "
                    f"CalAssist calendar? [y/N] ").strip().lower()
     if answer != "y":
         print("Nothing written.")

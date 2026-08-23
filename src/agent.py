@@ -141,12 +141,16 @@ def run_conversation(
     first_message: str,
     ask: Callable[[], str] = None,
     show: Callable[[str], None] = print,
+    on_proposal: Callable[[Proposal], str | None] = None,
     max_turns: int = 12,
 ) -> Proposal | None:
-    """Run the agent loop until it submits a proposal or the user stops.
+    """Run the agent loop until a proposal is accepted or the user stops.
 
-    `ask` collects a reply when the agent asks a question; injectable so the
-    loop can be driven by tests or another front end instead of stdin.
+    `ask` collects a reply when the agent asks a question.
+    `on_proposal` is called each time the agent proposes a week. Return None
+    to accept it, or a string of feedback to send the agent back for another
+    pass. Both are injectable so tests and other front ends can drive the
+    loop without stdin.
     """
     ask = ask or (lambda: input("You: ").strip())
     client = anthropic.Anthropic()
@@ -181,8 +185,17 @@ def run_conversation(
                 if block.type == "text" and block.text.strip():
                     show(f"\nCalAssist: {block.text.strip()}\n")
 
-        if CAPTURED["proposal"] is not None:
-            return CAPTURED["proposal"]
+        proposal = CAPTURED["proposal"]
+        if proposal is not None:
+            if on_proposal is None:
+                return proposal
+            feedback = on_proposal(proposal)
+            if not feedback:
+                return proposal              # accepted
+            # Revise: clear the captured proposal and send them back in.
+            CAPTURED["proposal"] = None
+            messages.append({"role": "user", "content": feedback})
+            continue
 
         # The agent stopped without proposing, so it asked something.
         reply = ask()
