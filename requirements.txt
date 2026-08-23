@@ -1,0 +1,13 @@
+# Claude — the agent's reasoning
+anthropic>=0.69.0
+
+# Google Calendar + Docs
+google-api-python-client>=2.140.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+
+# Reads ~/.config/calassist/env
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=8.0.0
