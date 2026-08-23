@@ -1,45 +1,58 @@
-# Where CalAssist stands — paused 2026-08-23
+# CalAssist — paused 2026-08-23 (evening)
 
 ## Run it
 
-    cd ~/Projects/calassist
-    source .venv/bin/activate
-    python -m src.main plan            # converse, preview, revise; writes nothing
-    python -m src.main plan --write    # same, then asks [y/N] before creating
+    source ~/.zshrc     # once per terminal window, first time only
+    calassist           # plan the week, asks before writing
+    calassist-preview   # same, never writes
+    calweek             # reopen the last chart
 
-## Done (13 commits, 54 tests passing)
+## State
 
-- Security: credentials in ~/.config/calassist (mode 600), pre-commit hook
-  (tested blocking), gitleaks CI, SECURITY.md
-- Google OAuth, CALENDAR SCOPE ONLY (no Docs access, deliberately)
-- Calendar reading; declined meetings count as free time
-- Free-slot arithmetic: work hours blocked by config, 15-min buffers, overflow
-- Priorities read from ~/Documents/calassist-priorities.md
-- Agent (claude-sonnet-5) with tools, commute estimation, categories
-- Travel blocks for 20+ min commutes; category colours on Google Calendar
-- HTML week preview; CLI with preview-by-default
+36 commits, 131 tests passing, published at github.com/kbas1/calassist.
+CalAssist calendar is EMPTY — the test week was deleted deliberately so the
+next run starts clean. Your own 7 commitments are untouched.
 
-## Unfinished
+## THE ONE THING TO DO NEXT
 
-1. REVISION LOOP IS COMMITTED BUT UNVERIFIED. You can now answer the preview
-   with feedback ("move the roadmap to Sunday") instead of only accepting.
-   The end-to-end test was still running when we paused — run it and watch
-   that a second, revised proposal actually appears.
+Run `calassist` yourself and exercise the revision loop. It has never been
+driven by a human — an acceptance bug swallowed every "yes" until late in the
+session, so the flow has only ever been verified by scripts.
 
-2. Never done a real --write run. All writing so far was a colour probe that
-   was cleaned up. The test calendar is currently empty of CalAssist events.
+When the chart opens, give it these corrections (all three were real misses
+in the last run):
 
-3. TASK 11 NOT RUN — the pre-publication audit. Do this BEFORE making the
-   repo public: gitleaks over full history, verify no credential was ever
-   committed, create the repo private first, then flip to public. Full
-   checklist in docs/superpowers/plans/2026-08-23-calassist-v1.md.
+    add travel to the grocery store, make grocery 20 minutes with no gap
+    before meal prep, and move the Discover call to Tuesday afternoon
 
-4. Priorities file is still the blank template.
+Then confirm with "yes" / "perfect" / anything affirmative, and "yes" again
+at the write prompt. Watch whether it actually applies all three.
 
-## Known quirks
+## Known issues, unfixed
 
-- OAuth app is in Google "Testing" status, so the token expires every 7 days.
-  Expected. auth.py handles it: prints one line, reopens the browser.
-- Commute times are model estimates, not Maps API. Good enough for buffers.
-- Agent asks about origin ambiguity (office vs home) rather than guessing —
-  that is deliberate.
+1. AGENT IGNORES SOME EXPLICIT INSTRUCTIONS. Last run it booked 30 minutes of
+   grocery when told 20, and put the Discover call Wednesday morning when told
+   Tuesday afternoon. Prompt-tuning problem, not a code bug.
+2. IT LEFT A 30-MINUTE HOLE on Monday (grocery 4:00, meal prep 4:30) despite
+   the no-idle-gaps rule. Worth watching whether it repeats.
+3. NO TRAVEL BLOCK to the grocery store even though the trip was described.
+4. RE-PLANNING AN ALREADY-PLANNED WEEK is untested. The agent now sees its own
+   previous blocks tagged as replaceable, but nothing has exercised that path.
+
+## Fixed late in the session (all verified)
+
+- "yes" accepts a proposal. It used to require a bare Enter; anything typed
+  went back to the agent as an edit request, so the calendar was never written.
+- Preview no longer draws CalAssist's own past blocks under the new proposal.
+- Chart: 12-hour times, proportional block heights, one element per event,
+  no rule through a block, auto-sized labels, notes in a right-hand column.
+- Live spinner naming the tool in progress.
+- Travel blocks end exactly at event start; no travel home unless something
+  follows.
+- Empty input re-prompts instead of quitting.
+
+## Where things live
+
+    ~/Projects/calassist/            code (public repo)
+    ~/.config/calassist/             credentials, mode 600, never committed
+    ~/Documents/calassist-priorities.md   priorities + the Defaults section
