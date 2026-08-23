@@ -190,7 +190,7 @@ def run_conversation(
     ask: Callable[[], str] = None,
     show: Callable[[str], None] = print,
     on_proposal: Callable[[Proposal], str | None] = None,
-    max_turns: int = 12,
+    max_turns: int = 30,
 ) -> Proposal | None:
     """Run the agent loop until a proposal is accepted or the user stops.
 
@@ -200,7 +200,15 @@ def run_conversation(
     pass. Both are injectable so tests and other front ends can drive the
     loop without stdin.
     """
-    ask = ask or (lambda: input("You: ").strip())
+    def _stdin_ask() -> str:
+        try:
+            return input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            # Ctrl-D / Ctrl-C, or stdin ran dry in a piped run.
+            print()
+            return "quit"
+
+    ask = ask or _stdin_ask
     client = anthropic.Anthropic()
     CAPTURED["proposal"] = None
 
@@ -224,6 +232,7 @@ def run_conversation(
             messages=messages,
         )
 
+        said_something = False
         for message in runner:
             messages.append({"role": "assistant", "content": message.content})
             tool_response = runner.generate_tool_call_response()
@@ -231,6 +240,7 @@ def run_conversation(
                 messages.append(tool_response)
             for block in message.content:
                 if block.type == "text" and block.text.strip():
+                    said_something = True
                     show(f"\nCalAssist: {block.text.strip()}\n")
 
         proposal = CAPTURED["proposal"]
@@ -245,7 +255,14 @@ def run_conversation(
             messages.append({"role": "user", "content": feedback})
             continue
 
-        # The agent stopped without proposing, so it asked something.
+        # The agent stopped without proposing. If it also said nothing, there
+        # is no question to answer — prompting for a reply would just look
+        # like a hang.
+        if not said_something:
+            show("\nCalAssist finished a turn without saying anything or "
+                 "proposing a week.\nTell it what you want, or type 'quit'.\n")
+
+        # It asked something.
         # An empty line here must NOT quit: at the proposal stage Enter means
         # "accept", and silently mapping the same key to "throw the whole
         # conversation away" loses everything the user has typed so far.
@@ -257,5 +274,8 @@ def run_conversation(
             return None
         messages.append({"role": "user", "content": reply})
 
-    show("\nReached the conversation limit without a proposal.\n")
+    show(f"\nStopped after {max_turns} exchanges without a proposal.\n"
+         "If that happened instantly, your terminal probably had queued\n"
+         "keystrokes from before — press Enter a few times to clear them,\n"
+         "then run the command again.\n")
     return None
