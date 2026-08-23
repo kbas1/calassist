@@ -45,11 +45,18 @@ h1 { font-size:1.5rem; margin:0 0 .2rem; letter-spacing:-.01em; }
       margin-right:9px; vertical-align:-4px; border:1px solid rgba(0,0,0,.12); }
 .scroll { overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
 table { border-collapse:collapse; width:100%; min-width:660px; }
-th,td { border:1px solid var(--line); padding:0; height:46px; text-align:center;
-        font-size:12px; line-height:1.15; position:relative; }
-.seg { position:absolute; left:1px; right:1px; border-radius:3px; overflow:hidden;
-       display:flex; align-items:center; justify-content:center; padding:0 2px;
-       color:#fff; font-weight:600; font-size:11.5px; }
+th,td { border-left:1px solid var(--line); border-right:1px solid var(--line);
+        border-top:1px solid var(--line); border-bottom:none; padding:0;
+        height:46px; text-align:center; font-size:12px; line-height:1.15;
+        position:relative; }
+tr:last-child td { border-bottom:1px solid var(--line); }
+/* Flush to the cell edges and painted OVER the hour rule, so consecutive
+   blocks read as one continuous run instead of being separated by seams. */
+.seg { position:absolute; left:0; right:0; border-radius:0; overflow:hidden;
+       display:flex; align-items:center; justify-content:center; padding:0 3px;
+       color:#fff; font-weight:600; line-height:1.18; text-align:center;
+       white-space:normal; overflow-wrap:anywhere; hyphens:auto;
+       margin-top:-1px; padding-bottom:1px; z-index:1; }
 .seg.ex { background:var(--existing); color:var(--fg); font-weight:500; }
 th { padding:7px 4px; font-weight:600; font-size:.8rem; }
 th .d { color:var(--muted); font-weight:400; font-size:.72rem; }
@@ -67,8 +74,28 @@ li { margin-bottom:.35rem; }
 """
 
 
+ROW_PX = 46          # height of one hour row
+COL_PX = 128         # approximate width of one day column
+
+
 def _minutes(hhmm: str) -> int:
     return int(hhmm[:2]) * 60 + int(hhmm[3:5])
+
+
+def _fit_font(text: str, minutes: int) -> float:
+    """Largest font size at which `text` wraps into the block's real area.
+
+    Labels are not truncated — the type shrinks until the whole title fits,
+    so a 30-minute "Travel to Pickleball" stays readable and complete.
+    """
+    height = max(9.0, minutes / 60 * ROW_PX - 3)
+    width = COL_PX - 6
+    for size in (12.5, 12, 11, 10, 9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6):
+        per_line = max(1, int(width / (size * 0.53)))
+        lines = -(-len(text) // per_line)               # ceil division
+        if lines * size * 1.18 <= height:
+            return size
+    return 6
 
 
 def _grid(proposal: Proposal, existing: list[Event], monday):
@@ -91,7 +118,7 @@ def _grid(proposal: Proposal, existing: list[Event], monday):
                 continue
             cells.setdefault((idx, h), []).append(
                 (top / 60 * 100, (bottom - top) / 60 * 100, cls, style,
-                 label if first else "", label)
+                 label if first else "", label, end_min - start_min)
             )
             first = False
 
@@ -142,8 +169,9 @@ def render(proposal: Proposal, existing: list[Event],
             if segs:
                 inner = "".join(
                     f'<div class="seg {cls}" style="top:{top:.4f}%;'
-                    f'height:{ht:.4f}%;{style}" title="{full}">{text[:18]}</div>'
-                    for top, ht, cls, style, text, full in segs
+                    f'height:{ht:.4f}%;font-size:{_fit_font(text, dur):.1f}px;{style}" '
+                    f'title="{full}">{text}</div>'
+                    for top, ht, cls, style, text, full, dur in segs
                 )
                 tds.append(f"<td{base}>{inner}</td>")
             else:
