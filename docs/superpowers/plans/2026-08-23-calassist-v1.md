@@ -154,7 +154,9 @@ chmod +x .githooks/pre-commit
 git config core.hooksPath .githooks
 
 # Prove it works — this MUST be refused:
-echo 'ANTHROPIC_API_KEY=sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKE1234567890' > /tmp/leak.txt
+# Build the test string at runtime so this document never itself contains
+# a key-shaped literal (which would trip GitHub push protection).
+printf 'ANTHROPIC_API_KEY=%s\n' "sk-ant-\$(printf 'A%.0s' {1..30})" > /tmp/leak.txt
 cp /tmp/leak.txt ./leaktest.txt
 git add -f leaktest.txt
 git commit -m "should be blocked"
