@@ -602,7 +602,7 @@ if __name__ == "__main__":
 - [ ] **Step 5: Run it**
 
 ```bash
-python src/auth.py
+python -m src.auth
 ```
 
 Expected: a browser opens → you pick the Google account → "unverified app" warning → **Advanced → Go to CalAssist (unsafe)** → Allow → terminal lists your calendars with their IDs. A `token.json` appears in the project root.
@@ -2166,7 +2166,7 @@ asks what it needs to know, and proposes a week I approve in one step.
 Google OAuth: see `docs/superpowers/plans/2026-08-23-calassist-v1.md` Task 2.
 Place `credentials.json` in the project root, then:
 
-    python src/auth.py        # opens a browser, creates token.json
+    python -m src.auth        # opens a browser, creates token.json
 
 ## Usage
 

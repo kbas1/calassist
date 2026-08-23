@@ -41,5 +41,10 @@ EVENING_OVERFLOW = [(time(21, 0), time(22, 0))]
 BUFFER_MINUTES = 15
 
 TARGET_CALENDAR_ID = os.getenv("CALASSIST_CALENDAR_ID", "primary")
-PRIORITIES_DOC_ID = os.getenv("PRIORITIES_DOC_ID")
-TASKS_DOC_ID = os.getenv("TASKS_DOC_ID")
+
+# Priorities live in a plain local file, NOT Google Docs. The Docs API has no
+# per-document scope, so reading one doc would have meant granting read access
+# to every document in the account. A local file grants nothing.
+PRIORITIES_FILE = Path(
+    os.getenv("PRIORITIES_FILE", Path.home() / "Documents" / "calassist-priorities.md")
+)
