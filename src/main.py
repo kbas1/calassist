@@ -12,6 +12,7 @@ from src.agent import opening_message, run_conversation
 from src.calendar_read import fetch_all_events
 from src.preview import render
 from src.priorities_read import target_monday
+from src.timefmt import span_12h
 from src.tools import Proposal
 from src.writer import create_events
 
@@ -24,7 +25,7 @@ def _summarise(proposal: Proposal, path: str) -> None:
     print("\n" + "=" * 64)
     for b in sorted(proposal.blocks, key=lambda x: (x["day"], x["start"])):
         day = datetime.fromisoformat(b["day"]).date()
-        print(f"  {day:%a %m/%d}  {b['start']}-{b['end']}  "
+        print(f"  {day:%a %m/%d}  {span_12h(b['start'], b['end']):>16}  "
               f"[{b['category']}]  {b['title']}")
     for s in proposal.skipped_already_scheduled:
         print(f"  skipped (already on calendar): {s['item']}")

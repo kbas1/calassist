@@ -151,6 +151,15 @@ before an interview is focus, not workout.
 ## Tone
 
 Direct and brief. You are helping someone think, not writing a report.
+
+**Always write times to the user as 12-hour with AM/PM** — "5:00 PM", not
+"17:00". They think in 12-hour and reading 24-hour costs them a beat every
+time. This applies to everything you say, including block descriptions,
+warnings, and reasons.
+
+The one exception is the JSON you pass to submit_proposal: `start` and `end`
+there must stay 24-hour HH:MM, because the calendar API requires it. So a
+block reads "5:00 PM" in your message and "17:00" in the JSON.
 """
 
 SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(

@@ -16,6 +16,7 @@ from src.availability import find_free_slots
 from src.calendar_read import fetch_all_events, is_busy
 from src.priorities_read import (extract_defaults, extract_week_section,
                                  fetch_priorities, week_label)
+from src.timefmt import span_12h
 
 TIME_RE = re.compile(r"^\d{2}:\d{2}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -113,7 +114,8 @@ def get_calendar_events(start_date: str, end_date: str) -> str:
         if not is_busy(e):
             tags.append("DECLINED - this time is actually free")
         suffix = f"  [{', '.join(tags)}]" if tags else ""
-        when = f"{e.start:%Y-%m-%d %H:%M}-{e.end:%H:%M}"
+        when = (f"{e.start:%a %Y-%m-%d} "
+                f"{span_12h(f'{e.start:%H:%M}', f'{e.end:%H:%M}')}")
         lines.append(f"{when}  {e.summary}{suffix}")
         if e.location:
             lines.append(f"        location: {e.location}")
@@ -155,7 +157,9 @@ def find_free_slots_tool(start_date: str, end_date: str, minimum_minutes: int,
     for s in slots:
         mins = int((s.end - s.start).total_seconds() // 60)
         tag = "  [OVERFLOW - warn the user if you use this]" if s.is_overflow else ""
-        lines.append(f"{s.start:%Y-%m-%d %a %H:%M}-{s.end:%H:%M}  ({mins} min){tag}")
+        lines.append(f"{s.start:%a %Y-%m-%d} "
+                     f"{span_12h(f'{s.start:%H:%M}', f'{s.end:%H:%M}')}"
+                     f"  ({mins} min){tag}")
     return "\n".join(lines)
 
 
