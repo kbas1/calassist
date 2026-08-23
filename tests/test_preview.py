@@ -179,3 +179,19 @@ def test_label_is_sized_against_the_whole_block(tmp_path):
     size = re.findall(r'font-size:([\d.]+)px;[^"]*"[^>]*>Potentially', html)
     assert size, "label was not rendered"
     assert float(size[0]) >= 9, f"{size[0]}px is smaller than the block allows"
+
+
+def test_hour_rule_is_suppressed_where_an_event_crosses_it(tmp_path):
+    """A 7:30-8:30 event owns the 8 PM boundary — no line through it."""
+    p = Proposal(blocks=[{"title": "Tennis", "day": "2026-08-28", "start": "19:30",
+                          "end": "20:30", "reason": "x", "category": "workout"}])
+    html = open(render(p, [], str(tmp_path / "n.html"))).read()
+    assert 'class="nb"' in html
+
+
+def test_block_ending_on_the_hour_does_not_claim_the_next_row(tmp_path):
+    """5:00-6:00 stops at the boundary; the 6 PM rule must stay."""
+    p = Proposal(blocks=[{"title": "Prep", "day": "2026-08-28", "start": "17:00",
+                          "end": "18:00", "reason": "x", "category": "focus"}])
+    html = open(render(p, [], str(tmp_path / "e.html"))).read()
+    assert 'class="nb"' not in html

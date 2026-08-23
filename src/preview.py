@@ -56,6 +56,9 @@ th,td { border-left:1px solid var(--line); border-right:1px solid var(--line);
         height:46px; text-align:center; font-size:12px; line-height:1.15;
         position:relative; overflow:visible; }
 tr:last-child td { border-bottom:1px solid var(--line); }
+/* An event that crosses this hour boundary owns it — no rule through a
+   single continuous block. */
+td.nb { border-top-color:transparent; }
 /* Flush to the cell edges and painted OVER the hour rule, so consecutive
    blocks read as one continuous run instead of being separated by seams. */
 .seg { position:absolute; left:0; right:0; border-radius:0; overflow:hidden;
@@ -113,6 +116,9 @@ def _grid(proposal: Proposal, existing: list[Event], monday):
     against the block's real height rather than a single slice of it.
     """
     cells: dict = {}
+    # Cells a block passes THROUGH, after the hour it starts in. The hour rule
+    # is suppressed on these so a single event is never crossed by a line.
+    crossed: set = set()
 
     def place(idx, start_min, end_min, cls, style, label):
         h = start_min // 60
@@ -121,6 +127,10 @@ def _grid(proposal: Proposal, existing: list[Event], monday):
         cells.setdefault((idx, h), []).append(
             (top, height, cls, style, label, end_min - start_min)
         )
+        # end_min - 1 so a block ending exactly on the hour does not claim the
+        # next row, which belongs to whatever starts there.
+        for hh in range(h + 1, ((end_min - 1) // 60) + 1):
+            crossed.add((idx, hh))
 
     for e in existing:
         idx = (e.start.date() - monday).days
@@ -136,7 +146,7 @@ def _grid(proposal: Proposal, existing: list[Event], monday):
             place(idx, _minutes(b["start"]), _minutes(b["end"]),
                   f"blk cat-{cat}", f"background:{colour}", b["title"])
 
-    return cells
+    return cells, crossed
 
 
 def render(proposal: Proposal, existing: list[Event],
@@ -146,7 +156,7 @@ def render(proposal: Proposal, existing: list[Event],
     anchor = min(days) if days else datetime.now(config.TIMEZONE).date()
     monday = anchor - timedelta(days=anchor.weekday())
 
-    cells = _grid(proposal, existing, monday)
+    cells, crossed = _grid(proposal, existing, monday)
     blocked_start, blocked_end = config.WEEKDAY_BLOCKED
 
     # Zoom: render only the hours that carry something, padded by one either
@@ -167,7 +177,12 @@ def render(proposal: Proposal, existing: list[Event],
         for d in range(7):
             segs = cells.get((d, h))
             work = d < 5 and blocked_start.hour <= h < blocked_end.hour
-            base = ' class="work" title="Work — not visible to CalAssist"' if work else ""
+            klass = " ".join(filter(None, [
+                "work" if work else "",
+                "nb" if (d, h) in crossed else "",
+            ]))
+            title = ' title="Work — not visible to CalAssist"' if work else ""
+            base = f' class="{klass}"{title}' if klass else title
             if segs:
                 inner = "".join(
                     f'<div class="seg {cls}" style="top:{top:.4f}%;'
