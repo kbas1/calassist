@@ -5,7 +5,7 @@ reading one priorities doc would have required documents.readonly — read
 access to every document in the account. A local file grants nothing.
 """
 import re
-from datetime import date
+from datetime import date, timedelta
 
 import config
 
@@ -21,10 +21,23 @@ def fetch_priorities() -> str:
     return path.read_text()
 
 
-def week_label(day: date | None = None) -> str:
-    """The '8.24' style label for the Monday of the given day's week."""
+def target_monday(day: date | None = None) -> date:
+    """The Monday of the week we are planning.
+
+    On a weekend you are planning the week AHEAD (the classic Sunday-evening
+    ritual), so Sat/Sun roll forward to the upcoming Monday. Midweek you are
+    adjusting the CURRENT week, so Mon-Fri use this week's Monday.
+    """
     day = day or date.today()
-    monday = day - __import__("datetime").timedelta(days=day.weekday())
+    monday = day - timedelta(days=day.weekday())
+    if day.weekday() >= 5:                    # Saturday or Sunday
+        monday += timedelta(days=7)
+    return monday
+
+
+def week_label(day: date | None = None) -> str:
+    """The '8.24' style label for the week being planned."""
+    monday = target_monday(day)
     return f"{monday.month}.{monday.day}"
 
 

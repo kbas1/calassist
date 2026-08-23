@@ -35,3 +35,34 @@ def test_includes_all_subsections_of_that_week():
 
 def test_returns_none_when_week_absent():
     assert extract_week_section(DOC, "9.14") is None
+
+
+# --- which week are we planning? -------------------------------------
+
+from datetime import date
+
+from src.priorities_read import target_monday, week_label
+
+
+def test_sunday_plans_the_week_ahead():
+    """The Sunday-evening ritual: plan the week that starts tomorrow."""
+    sunday = date(2026, 8, 23)
+    assert target_monday(sunday) == date(2026, 8, 24)
+    assert week_label(sunday) == "8.24"
+
+
+def test_saturday_plans_the_week_ahead():
+    saturday = date(2026, 8, 22)
+    assert target_monday(saturday) == date(2026, 8, 24)
+
+
+def test_midweek_plans_the_current_week():
+    """On Wednesday you're adjusting this week, not next."""
+    wednesday = date(2026, 8, 26)
+    assert target_monday(wednesday) == date(2026, 8, 24)
+    assert week_label(wednesday) == "8.24"
+
+
+def test_monday_plans_that_same_week():
+    monday = date(2026, 8, 24)
+    assert target_monday(monday) == date(2026, 8, 24)
