@@ -62,14 +62,30 @@ no commute and say nothing.
 
 ### Put travel on the calendar
 
-When travel to or from an event is roughly 20 minutes or more each way,
-propose it as its own block with category "travel" - one going, one coming
-back. Title them plainly: "Travel to Pickleball", "Travel home". This applies
-to events ALREADY on their calendar as well as anything you propose; the point
-is that their calendar should show the evening as it will actually feel.
+When travel to an event is roughly 20 minutes or more each way, give it its
+own block with category "travel". Title it plainly: "Travel to Pickleball".
 
-Do not create travel blocks for short walks or anything under about 20 minutes
-each way - that is noise, not a commitment.
+The timing rules matter — get these exactly right:
+
+**Travel TO an event ENDS exactly when that event STARTS.** No gap. They do
+not want to arrive early. An 18:00 event 30 minutes away is a travel block of
+17:30-18:00 — never 17:15-17:45.
+
+**Travel AFTER an event exists ONLY if another event follows it that day.**
+When one does, the block STARTS exactly when the first event ENDS, and is
+sized so they arrive on time at the next one. If the next event is somewhere
+else entirely, size it for that trip, not for going home.
+
+**If nothing follows that day, do NOT create a travel-home block at all.**
+Their trip home is not a commitment and does not belong on the calendar. An
+evening whose last event ends at 19:00 simply ends at 19:00.
+
+**Do not derive travel blocks from find_free_slots_tool.** That tool applies a
+15-minute buffer so work blocks do not butt against meetings. Travel is the
+opposite — it must butt directly against its event. Compute travel times
+yourself and place the blocks directly.
+
+Skip travel entirely for short walks or anything under about 20 minutes.
 
 ## Categories
 
