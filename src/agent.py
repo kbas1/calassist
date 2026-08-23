@@ -10,6 +10,7 @@ import anthropic
 
 import config
 from src.priorities_read import target_monday
+from src.status import TOOL_LABELS, Spinner
 from src.tools import ALL_TOOLS, CAPTURED, Proposal
 
 SYSTEM_PROMPT_TEMPLATE = """You are CalAssist, a weekly planning partner.
@@ -233,15 +234,28 @@ def run_conversation(
         )
 
         said_something = False
-        for message in runner:
-            messages.append({"role": "assistant", "content": message.content})
-            tool_response = runner.generate_tool_call_response()
-            if tool_response is not None:
-                messages.append(tool_response)
-            for block in message.content:
-                if block.type == "text" and block.text.strip():
-                    said_something = True
-                    show(f"\nCalAssist: {block.text.strip()}\n")
+        with Spinner("thinking") as spin:
+            def emit(text: str) -> None:
+                spin.clear()
+                show(text)
+
+            for message in runner:
+                messages.append({"role": "assistant", "content": message.content})
+
+                # Name what it is about to do, so the wait is legible.
+                for block in message.content:
+                    if block.type == "tool_use":
+                        spin.update(TOOL_LABELS.get(block.name, block.name))
+
+                tool_response = runner.generate_tool_call_response()
+                if tool_response is not None:
+                    messages.append(tool_response)
+
+                for block in message.content:
+                    if block.type == "text" and block.text.strip():
+                        said_something = True
+                        emit(f"\nCalAssist: {block.text.strip()}\n")
+                spin.update("thinking")
 
         proposal = CAPTURED["proposal"]
         if proposal is not None:

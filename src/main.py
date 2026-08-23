@@ -52,7 +52,9 @@ def main() -> int:
     sunday = monday + timedelta(days=6)
     print(f"CalAssist — planning {monday:%b %-d} to {sunday:%b %-d}")
     print("Type your answers, or 'quit' to stop. "
-          "Nothing is written without asking.\n")
+          "Nothing is written without asking.")
+    print("First reply usually takes 30-60 seconds while it reads your "
+          "priorities and calendar.\n")
 
     start = datetime.combine(monday, datetime.min.time(), tzinfo=config.TIMEZONE)
 
