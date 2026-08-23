@@ -41,10 +41,8 @@ def test_html_contains_every_section(tmp_path):
     assert "Interview prep" in html            # proposed block
     assert "Travel to Pickleball" in html      # travel block
     assert "Free Salsa Lesson" in html         # existing commitment
-    assert "Dentist" in html                   # skipped
     assert "Design review" in html             # did not fit
     assert "Monday is commute-heavy" in html   # warning
-    assert "Already On Your Calendar" in html
 
 
 def test_categories_get_distinct_css_classes(tmp_path):
@@ -86,3 +84,10 @@ def test_grid_trims_to_the_hours_actually_used(tmp_path):
 def test_handles_an_empty_proposal(tmp_path):
     path = render(Proposal(), [], str(tmp_path / "empty.html"))
     assert os.path.exists(path)
+
+
+def test_skipped_section_is_not_rendered(tmp_path):
+    """Deliberately dropped — the user already knows what is on their calendar."""
+    html = open(render(_proposal(), _existing(), str(tmp_path / "w.html"))).read()
+    assert "Already On Your Calendar" not in html
+    assert "Dentist" not in html

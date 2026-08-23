@@ -130,18 +130,12 @@ def render(proposal: Proposal, existing: list[Event],
         f'{c.title()}</span>'
         for c in used
     )
-    key += ('<span><i class="sw" style="background:var(--existing)"></i>'
-            'Already On Your Calendar</span>'
-            '<span><i class="sw" style="background:var(--work)"></i>'
+    key += ('<span><i class="sw" style="background:var(--work)"></i>'
             'Work — Not Visible To CalAssist</span>')
 
     def section(title, items):
         return f"<section><h2>{title}</h2><ul>{''.join(items)}</ul></section>" if items else ""
 
-    skipped = section("Already On Your Calendar — Skipped", [
-        f"<li><strong>{s['item']}</strong> <span class='why'>&rarr; matched "
-        f"&ldquo;{s['matched']}&rdquo;</span></li>"
-        for s in proposal.skipped_already_scheduled])
     missed = section("Did Not Fit", [
         f"<li><strong>{n['item']}</strong> <span class='why'>&mdash; {n['why']}</span></li>"
         for n in proposal.not_scheduled])
@@ -169,7 +163,7 @@ def render(proposal: Proposal, existing: list[Event],
 <tr><th></th>{headers}</tr>
 {''.join(rows)}
 </table></div>
-{skipped}{missed}{warns}
+{missed}{warns}
 </div></body></html>"""
 
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
