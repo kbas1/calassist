@@ -205,13 +205,32 @@ def run_conversation(
     pass. Both are injectable so tests and other front ends can drive the
     loop without stdin.
     """
+    # Things that are shell commands, not answers. Typing one here means the
+    # user thinks they are at a prompt; sending it to the model just produces
+    # a confused reply, so intercept and say where they actually are.
+    SHELL_WORDS = {
+        "calassist", "calclear", "calweek", "calassist-preview", "ls", "cd",
+        "pwd", "clear", "source", "python", "pip", "git", "open", "exit()",
+        "code", "brew", "sudo", "mkdir", "cat",
+    }
+
+    def _looks_like_shell(text: str) -> bool:
+        first = text.strip().split()[0].lower() if text.strip() else ""
+        return first in SHELL_WORDS or text.strip().startswith(("./", "~/", "/"))
+
     def _stdin_ask() -> str:
-        try:
-            return input("You: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            # Ctrl-D / Ctrl-C, or stdin ran dry in a piped run.
-            print()
-            return "quit"
+        while True:
+            try:
+                reply = input("CalAssist ▸ you: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return "quit"
+            if reply and _looks_like_shell(reply):
+                print(f"\n  '{reply.split()[0]}' is a terminal command, and you are "
+                      f"talking to CalAssist right now —\n  so it would just confuse "
+                      f"it. Type 'quit' to leave, then run it at the shell.\n")
+                continue
+            return reply
 
     ask = ask or _stdin_ask
     client = anthropic.Anthropic()

@@ -35,3 +35,9 @@ def test_rejects_change_requests(reply):
 def test_yes_wrapping_a_change_is_still_a_change():
     """The most dangerous case — an affirmative prefix hiding an edit."""
     assert is_acceptance("yes but move the gym") is False
+
+
+def test_shell_words_are_not_mistaken_for_acceptance():
+    """'calclear' means the user thinks they are at a shell, not 'yes'."""
+    for word in ["calclear", "calassist", "ls", "cd ~", "source ~/.zshrc"]:
+        assert is_acceptance(word) is False, word

@@ -93,8 +93,15 @@ def main() -> int:
             webbrowser.open(f"file://{path}")
         print("\n  Type 'yes' to put this on your calendar,")
         print("  or say what to change (e.g. 'move the gym to Tuesday').\n")
-        reply = input("  yes / change > ").strip()
-        return None if is_acceptance(reply) else reply
+        while True:
+            reply = input("  CalAssist ▸ yes / change: ").strip()
+            first = reply.split()[0].lower() if reply else ""
+            if first in {"calassist", "calclear", "calweek", "quit", "exit"}:
+                print(f"\n  '{first}' is a terminal command — you are still talking "
+                      f"to CalAssist.\n  Say 'yes' to save this week, or describe a "
+                      f"change.\n")
+                continue
+            return None if is_acceptance(reply) else reply
 
     proposal = run_conversation(opening_message(monday), on_proposal=on_proposal)
     if proposal is None:
