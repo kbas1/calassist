@@ -20,3 +20,12 @@ def test_overflow_windows_do_not_intrude_on_work():
 def test_buffer_is_not_negative():
     """0 is the intended default — travel blocks replaced the buffer."""
     assert config.BUFFER_MINUTES >= 0
+
+
+def test_calassist_calendar_is_always_readable():
+    """It must see its own blocks, or it will schedule on top of them."""
+    assert config.TARGET_CALENDAR_ID in config.READ_CALENDAR_IDS
+
+
+def test_read_calendars_has_no_blanks():
+    assert all(c.strip() for c in config.READ_CALENDAR_IDS)

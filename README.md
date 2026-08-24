@@ -28,6 +28,7 @@ Happy with this? Press Enter to accept, or say what to change.
 You: move the roadmap to Saturday
 ```
 
+- Reads any number of calendars (work, shared, personal) as busy time
 - Reconciles a priorities file against what's already on the calendar
 - Estimates commute from event locations and blocks travel time
 - Asks rather than guessing when a duration is missing

@@ -61,6 +61,17 @@ CATEGORIES = list(CATEGORY_COLORS)
 
 TARGET_CALENDAR_ID = os.getenv("CALASSIST_CALENDAR_ID", "primary")
 
+# Calendars to READ when working out what you are already committed to.
+# Comma-separated in the env file, e.g.
+#     READ_CALENDAR_IDS=primary,you@work.com,family@group.calendar.google.com
+# "primary" means your main calendar. The CalAssist calendar is always added,
+# so it can see what it scheduled previously.
+READ_CALENDAR_IDS = [
+    c.strip() for c in os.getenv("READ_CALENDAR_IDS", "primary").split(",") if c.strip()
+]
+if TARGET_CALENDAR_ID not in READ_CALENDAR_IDS:
+    READ_CALENDAR_IDS.append(TARGET_CALENDAR_ID)
+
 # Priorities live in a plain local file, NOT Google Docs. The Docs API has no
 # per-document scope, so reading one doc would have meant granting read access
 # to every document in the account. A local file grants nothing.

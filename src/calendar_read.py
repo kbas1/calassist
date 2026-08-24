@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 import config
 from src.auth import get_credentials
@@ -61,19 +62,23 @@ def _parse_when(raw_side: dict) -> tuple[datetime, bool]:
 
 
 def fetch_all_events(start: datetime, end: datetime) -> list[Event]:
-    """Every event that occupies this time, across all calendars we care about.
+    """Every event that occupies this time, across every configured calendar.
 
-    CalAssist writes to TARGET_CALENDAR_ID but the user lives on `primary`.
-    Reading only `primary` would make CalAssist blind to blocks it wrote on a
-    previous run, and it would cheerfully schedule on top of them.
+    Set READ_CALENDAR_IDS to include a work or shared calendar. The CalAssist
+    calendar is always included so it can see blocks it wrote previously and
+    not schedule on top of them.
+
+    A calendar that cannot be read (revoked access, wrong ID, someone else's
+    calendar) is skipped with a warning rather than failing the whole run —
+    a broken work calendar should not stop you planning your week.
     """
-    ids = ["primary"]
-    if config.TARGET_CALENDAR_ID not in ids:
-        ids.append(config.TARGET_CALENDAR_ID)
-
     events: list[Event] = []
-    for cid in ids:
-        events.extend(fetch_events(start, end, calendar_id=cid))
+    for cid in config.READ_CALENDAR_IDS:
+        try:
+            events.extend(fetch_events(start, end, calendar_id=cid))
+        except HttpError as exc:
+            print(f"  warning: could not read calendar '{cid}' ({exc.status_code}) "
+                  f"- skipping it")
     return sorted(events, key=lambda e: e.start)
 
 
