@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta
 import config
 from src.agent import opening_message, run_conversation
 from src.calendar_read import fetch_all_events
+from src.cleanup import delete_blocks, describe, find_written_blocks
 from src.preview import render
 from src.priorities_read import target_monday
 from src.confirm import is_acceptance
@@ -41,7 +42,7 @@ def _summarise(proposal: Proposal, path: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="calassist")
-    parser.add_argument("command", choices=["plan"])
+    parser.add_argument("command", choices=["plan", "clear"])
     parser.add_argument("--write", action="store_true",
                         help="offer to create the events (default is preview only)")
     parser.add_argument("--week", help="Monday of the target week, YYYY-MM-DD")
@@ -51,6 +52,24 @@ def main() -> int:
 
     monday = _monday(args.week)
     sunday = monday + timedelta(days=6)
+    start_dt = datetime.combine(monday, datetime.min.time(), tzinfo=config.TIMEZONE)
+
+    if args.command == "clear":
+        found = find_written_blocks(start_dt, start_dt + timedelta(days=7))
+        if not found:
+            print(f"Nothing to clear for {monday:%b %-d}-{sunday:%b %-d}.")
+            return 0
+        print(f"These {len(found)} blocks were created by CalAssist:\n")
+        for e in found:
+            print(f"  {describe(e)}")
+        print("\nAnything you created yourself is untouched.")
+        if not is_acceptance(input(f"\nDelete these {len(found)}? [yes/no] ").strip()
+                             or "no"):
+            print("Nothing deleted.")
+            return 0
+        print(f"\nDeleted {delete_blocks(found)} blocks.")
+        return 0
+
     print(f"CalAssist — planning {monday:%b %-d} to {sunday:%b %-d}")
     print("─" * 64)
     print("You are now talking to CalAssist, not the shell — typed text goes")
@@ -59,7 +78,7 @@ def main() -> int:
     print("First reply usually takes 30-60 seconds while it reads your "
           "priorities and calendar.\n")
 
-    start = datetime.combine(monday, datetime.min.time(), tzinfo=config.TIMEZONE)
+    start = start_dt
 
     def on_proposal(proposal: Proposal) -> str | None:
         """Show the week, then accept it or send feedback back to the agent."""
